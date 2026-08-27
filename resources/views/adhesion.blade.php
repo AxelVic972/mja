@@ -298,13 +298,102 @@
                                     </div>
                                 </div>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4" data-mode="adhesion">
-                                    <div>
+                                    {{-- <div>
                                         <label for="a-naissance" class="block text-sm font-display font-bold text-mja-gray mb-1.5">Date de naissance <span class="text-mja-red" aria-hidden="true">*</span></label>
                                         <input type="text" id="a-naissance" name="date_naissance" value="{{ $pre('date_naissance') }}" required
                                             class="w-full border-2 border-gray-100 focus:border-mja-blue rounded-xl px-4 py-3 text-sm outline-none transition-colors @error('date_naissance') border-mja-red @enderror"
                                             placeholder="JJ/MM/AAAA" maxlength="10">
                                         @error('date_naissance')<p class="text-mja-red text-xs mt-1 font-display font-semibold">{{ $message }}</p>@enderror
-                                    </div>
+                                    </div> --}}
+
+                <div>
+                    <label for="a-naissance"
+                        class="block text-sm font-display font-bold text-mja-gray mb-1.5">
+                        Date de naissance
+                        <span class="text-mja-red" aria-hidden="true">*</span>
+                    </label>
+
+                    <input
+                        type="text"
+                        id="a-naissance"
+                        name="date_naissance"
+                        value="{{ $pre('date_naissance') }}"
+                        required
+                        inputmode="numeric"
+                        autocomplete="bday"
+                        placeholder="JJ/MM/AAAA"
+                        maxlength="10"
+                        class="w-full border-2 border-gray-100 focus:border-mja-blue rounded-xl px-4 py-3 text-sm outline-none transition-colors @error('date_naissance') border-mja-red @enderror"
+                    >
+
+                    @error('date_naissance')
+                        <p class="text-mja-red text-xs mt-1 font-display font-semibold">
+                            {{ $message }}
+                        </p>
+                    @enderror
+                </div>
+
+                <script>
+                document.addEventListener('DOMContentLoaded', function () {
+                    const input = document.getElementById('a-naissance');
+
+                    if (!input) return;
+
+                    input.addEventListener('input', function (e) {
+                        // On récupère uniquement les chiffres
+                        let value = e.target.value.replace(/\D/g, '');
+
+                        // Maximum : 8 chiffres (JJMMAAAA)
+                        value = value.substring(0, 8);
+
+                        // Formatage automatique
+                        if (value.length > 4) {
+                            value = value.substring(0, 2) + '/' +
+                                    value.substring(2, 4) + '/' +
+                                    value.substring(4);
+                        } else if (value.length > 2) {
+                            value = value.substring(0, 2) + '/' +
+                                    value.substring(2);
+                        }
+
+                        e.target.value = value;
+                    });
+
+                    // Empêche certains caractères non numériques
+                    input.addEventListener('keydown', function (e) {
+                        const allowedKeys = [
+                            'Backspace',
+                            'Delete',
+                            'Tab',
+                            'ArrowLeft',
+                            'ArrowRight',
+                            'Home',
+                            'End'
+                        ];
+
+                        if (
+                            allowedKeys.includes(e.key) ||
+                            e.ctrlKey ||
+                            e.metaKey
+                        ) {
+                            return;
+                        }
+
+                        if (!/[0-9]/.test(e.key)) {
+                            e.preventDefault();
+                        }
+                    });
+
+                    // Nettoyage final avant envoi
+                    input.form?.addEventListener('submit', function () {
+                        input.value = input.value.replace(/\D/g, '').replace(
+                            /^(\d{2})(\d{2})(\d{4})$/,
+                            '$1/$2/$3'
+                        );
+                    });
+                });
+                </script>
+
                                     <div>
                                         <label for="a-profession" class="block text-sm font-display font-bold text-mja-gray mb-1.5">Profession / Secteur d'activité <span class="text-mja-red" aria-hidden="true">*</span></label>
                                         <input type="text" id="a-profession" name="profession" value="{{ $pre('profession') }}" required

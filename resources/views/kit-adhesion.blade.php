@@ -100,6 +100,14 @@
     }
     if ($vedette) $phototheque[] = $vedette;
 
+    // Tout ce qui n'est pas une photo d'action : c'est la suite du choix
+    // proposé par le sélecteur de photo, une fois les quatre photos d'action
+    // parcourues.
+    $photosAutres = $parDefinition(array_merge(
+        $photosGroupe,
+        $vedette ? [$vedette] : [],
+    ));
+
     // Définition de la plus petite photo « en action » : ce sont elles qui
     // partent sur les flyers, un avertissement séparé est donc utile.
     $definitionMiniAction = null;
@@ -570,6 +578,24 @@ var LARGEURS = @json($largeurs);
    la rotation générale, sans trou dans le visuel. */
 var PHOTOS_VEDETTE = @json($vedette ? [$vedette] : []);
 
+/* Tout le reste de la photothèque, classé de la plus définie à la plus
+   légère. */
+var PHOTOS_AUTRES = @json(array_values($photosAutres));
+
+/**
+ * Réserve en deux blocs, pour les cases qui montrent UNE photo : les quatre
+ * photos d'action d'abord — ce sont elles qui doivent sortir par défaut sur
+ * un flyer ou une affiche — puis toute la photothèque.
+ *
+ * Deux blocs plutôt qu'une liste à plat, parce que la préférence de
+ * définition ne doit jouer qu'à l'intérieur d'un bloc : à plat, la photo de
+ * groupe en 3566 px remonterait devant les photos d'action et le tirage par
+ * défaut ne montrerait plus l'association à l'œuvre. Ainsi le défaut reste
+ * une action, et le sélecteur continue au-delà — utile en A3, où seules les
+ * photos de groupe ont la définition nécessaire.
+ */
+var PHOTOS_LARGE = [PHOTOS_ACTION, PHOTOS_AUTRES];
+
 /* Décalage dans la photothèque, propre au visuel en cours de rendu : c'est ce
    qui fait que deux mosaïques ne montrent pas les mêmes photos. */
 var PIDX = 0;
@@ -580,6 +606,12 @@ var EMBED_PHOTOS = false;
    visuel précis sans toucher aux autres. Il s'applique à l'aperçu comme à
    l'export, puisque tout part de PIDX. */
 var DECALAGE = {};
+
+/* Décalage du visuel en cours de composition. Séparé de PIDX : le rang de
+   départ du gabarit doit rester dans le premier bloc de la réserve (une photo
+   d'action sur un flyer), alors que le décalage choisi à la main a le droit
+   d'en sortir pour parcourir toute la photothèque. */
+var DECAL = 0;
 
 /* Nombre de tuiles photo posées par le dernier visuel construit : le
    sélecteur n'a de sens que sur un visuel qui montre des photos, et on ne le
@@ -979,7 +1011,7 @@ function bgMarkup(style, W, H, uid, embed){
       img = OPT.photo
         ? '<image x="0" y="0" width="' + W + '" height="' + H + '" href="' + src + '" xlink:href="' + src
           + '" preserveAspectRatio="xMidYMid slice"/>'
-        : photoTile(0, 0, W, H, 0, PHOTOS_ACTION);
+        : photoTile(0, 0, W, H, 0, PHOTOS_LARGE);
     } else {
       /* Aucune photo chargée : fond neutre + petit repère en haut à droite,
          volontairement hors des zones de texte. */
@@ -1554,7 +1586,7 @@ function renderStory(style, variant, uid, embed){
  * le nom dans le sable au milieu, groupe à droite.
  */
 function reserveTuile(i, n){
-  if (i === 0) return PHOTOS_ACTION;
+  if (i === 0) return PHOTOS_LARGE;
   if (n === 3 && i === 1 && PHOTOS_VEDETTE.length) return PHOTOS_VEDETTE;
   return PHOTOS_GROUPE;
 }
@@ -1683,7 +1715,7 @@ function renderBulle(style, variant, uid, embed, W, H){
      + ' q ' + (-R * 0.72) + ' 0 ' + (-R * 0.72) + ' ' + (-R * 0.58)
      + ' Z"/></clipPath></defs>';
   s += '<g clip-path="url(#bul' + uid + ')" data-bleed="1">'
-     + photoTile(cxB - R, cyB - R, 2 * R, R * 2.2, 0, PHOTOS_ACTION)
+     + photoTile(cxB - R, cyB - R, 2 * R, R * 2.2, 0, PHOTOS_LARGE)
      + '<rect x="' + (cxB - R) + '" y="' + (cyB - R) + '" width="' + (2 * R) + '" height="' + (R * 2.2) + '" fill="' + C.navy + '" opacity="' + (sombre ? 0.28 : 0.16) + '"/>'
      + '</g>';
 
@@ -1826,7 +1858,7 @@ function renderModerne(style, variant, uid, embed, W, H){
   if (phW > W * 0.20 && phH > H * 0.10) {
     var r = Math.min(phW, phH) * 0.22;
     s += '<defs><clipPath id="ph' + uid + '"><rect x="' + phX + '" y="' + phY + '" width="' + phW + '" height="' + phH + '" rx="' + r + '"/></clipPath></defs>';
-    s += '<g clip-path="url(#ph' + uid + ')">' + photoTile(phX, phY, phW, phH, 0, PHOTOS_ACTION) + '</g>';
+    s += '<g clip-path="url(#ph' + uid + ')">' + photoTile(phX, phY, phW, phH, 0, PHOTOS_LARGE) + '</g>';
     s += '<rect x="' + phX + '" y="' + phY + '" width="' + phW + '" height="' + phH + '" rx="' + r
        + '" fill="none" stroke="' + C.yellow + '" stroke-width="' + (bar * 1.4) + '"/>';
   }
@@ -2185,20 +2217,49 @@ function candidats(reserve, w){
   return bons.concat(reste);
 }
 
+/** Index ramené dans [0, n[, quel que soit le signe. */
+function tourne(i, n){ return ((i % n) + n) % n; }
+
+/**
+ * Aplatit une réserve pour une tuile de `w` unités et rend la taille de son
+ * premier bloc. Une réserve est soit une liste de photos, soit une liste de
+ * blocs dont l'ordre est significatif (voir PHOTOS_LARGE) ; le classement par
+ * définition s'applique bloc à bloc.
+ */
+function ordonner(reserve, w){
+  if (typeof reserve[0] === 'string') {
+    var plate = candidats(reserve, w);
+    return { liste: plate, bloc: plate.length };
+  }
+  var out = [], premier = 0;
+  for (var b = 0; b < reserve.length; b++) {
+    var part = candidats(reserve[b], w);
+    if (b === 0) premier = part.length;
+    out = out.concat(part);
+  }
+  return { liste: out, bloc: premier || out.length };
+}
+
 function photoTile(x, y, w, h, idx, reserve){
-  var i = PIDX + idx, src, chemin = null, puise;
+  var src, chemin = null, puise;
   TUILES++;
 
   if (!OPT.photos.length && reserve && reserve.length) {
-    var liste = candidats(reserve, w);
-    puise = liste.length;
-    chemin = liste[((i % liste.length) + liste.length) % liste.length];
+    var o = ordonner(reserve, w), n = o.liste.length;
+    puise = n;
+
+    /* Le rang de départ tourne dans le PREMIER bloc : c'est lui qui porte
+       l'intention du gabarit — une photo d'action sur un flyer — et le
+       compteur du gabarit, qui va jusqu'à la douzaine, en sortirait sinon.
+       Le décalage choisi à la main parcourt, lui, toute la réserve. */
+    chemin = o.liste[tourne(tourne(PIDX + idx, o.bloc) + DECAL, n)];
     src = srcPhoto(chemin);
   } else {
+    var i = PIDX + idx + DECAL;
     puise = OPT.photos.length || DEFAULT_PHOTOS.length;
     src = photoAt(i);
     if (!OPT.photos.length && DEFAULT_PHOTOS.length) {
-      chemin = DEFAULT_PHOTOS[((i % DEFAULT_PHOTOS.length) + DEFAULT_PHOTOS.length) % DEFAULT_PHOTOS.length];
+      chemin = DEFAULT_PHOTOS[tourne(i, DEFAULT_PHOTOS.length)];
     }
   }
   if (puise > TUILES_RESERVE) TUILES_RESERVE = puise;
@@ -2559,7 +2620,8 @@ var GROUP_LABEL = { post:'Post', story:'Story', affiche:'Affiche', flyer:'Flyer'
 /** Compose le SVG d'un visuel. `embed` = ressources en base64 (export). */
 function buildSvg(card, embed){
   var uid = '-' + card.id + (embed ? 'x' : '');
-  PIDX = (card.pidx || 0) + (DECALAGE[card.id] || 0);
+  PIDX = card.pidx || 0;
+  DECAL = DECALAGE[card.id] || 0;
   EMBED_PHOTOS = !!embed;
   if (card.verso)  return renderVerso(card.style, card.variant, uid, embed);
   if (card.style === 'moderne') return renderModerne(card.style, card.variant, uid, embed, card.w, card.h);
@@ -2615,7 +2677,8 @@ function anim(inner, o){
 function motionFrame(card, t, embed){
   var W = card.w, H = card.h, uid = '-m' + card.id + (embed ? 'x' : '');
   var style = card.style, p = pal(style), v = V(card.variant);
-  PIDX = (card.pidx || 0) + (DECALAGE[card.id] || 0);
+  PIDX = card.pidx || 0;
+  DECAL = DECALAGE[card.id] || 0;
   EMBED_PHOTOS = !!embed;
   var cx = W / 2, M = W * 0.07;
   var lien = OPT.url.replace(/^https?:\/\//, '');
@@ -2990,8 +3053,9 @@ function drawCard(id){
   var total = TUILES_RESERVE;
   if (!TUILES || total < 2) { rang.hidden = true; return; }
   rang.hidden = false;
-  var pos = (((card.pidx || 0) + (DECALAGE[id] || 0)) % total + total) % total;
-  rang.querySelector('.pnum').textContent = (pos + 1) + ' / ' + total
+  /* Le cran affiché est celui du sélecteur, pas le rang interne du gabarit :
+     à l'ouverture le visuel est sur son choix par défaut, donc « 1 / n ». */
+  rang.querySelector('.pnum').textContent = (tourne(DECALAGE[id] || 0, total) + 1) + ' / ' + total
     + (TUILES > 1 ? ' (' + TUILES + ' tuiles)' : '');
 }
 function setupLazy(){
