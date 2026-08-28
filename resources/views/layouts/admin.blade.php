@@ -131,6 +131,11 @@
                       {{ request()->routeIs('admin.periods.*') ? 'bg-mja-blue text-white' : 'text-gray-400 hover:bg-white/5 hover:text-white' }}">
                 <i class="fas fa-calendar-week w-4 text-center text-mja-yellow"></i> Périodes
             </a>
+            <a href="{{ route('admin.promo-codes.index') }}"
+               class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-display font-semibold transition-colors
+                      {{ request()->routeIs('admin.promo-codes.*') ? 'bg-mja-blue text-white' : 'text-gray-400 hover:bg-white/5 hover:text-white' }}">
+                <i class="fas fa-ticket w-4 text-center text-mja-blue"></i> Codes promo
+            </a>
             @endif
 
             @if(auth()->user()->canManageUsers())

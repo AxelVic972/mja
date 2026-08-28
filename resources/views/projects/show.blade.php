@@ -64,7 +64,7 @@
         <div class="mt-12">
             @foreach([
                 ['À venir', $aVenir, 'fa-calendar-day', 'text-mja-red', true],
-                ['Éditions passées', $passes, 'fa-clock-rotate-left', 'text-gray-400', false],
+                ['Événements passés', $passes, 'fa-clock-rotate-left', 'text-gray-400', false],
             ] as [$titreGroupe, $groupe, $icone, $couleur, $enAvant])
                 @if($groupe->count())
                 <h2 class="font-display font-black text-xl text-mja-gray mb-5 mt-10 first:mt-0 flex items-center gap-2">

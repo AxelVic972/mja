@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Adhesion;
 use App\Models\AdhesionPeriod;
+use App\Models\PromoCode;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -147,5 +148,42 @@ class AdhesionRattachementTest extends TestCase
         ])->assertSessionHasNoErrors();
 
         $this->assertSame('prise_infos', Adhesion::firstOrFail()->statut);
+    }
+
+    public function test_un_code_promo_a_100_pourcent_valide_l_adhesion_sans_paiement(): void
+    {
+        Mail::fake();
+        $code = PromoCode::create([
+            'code' => 'MJA-INCIDENT',
+            'discount_percent' => 100,
+            'max_uses' => 1,
+            'active' => true,
+        ]);
+
+        $this->post('/adhesion', $this->formulaire(['promo_code' => 'mja-incident']))
+            ->assertSessionHasNoErrors();
+
+        $adhesion = Adhesion::firstOrFail();
+        $this->assertSame('payee', $adhesion->statut);
+        $this->assertSame('code_promo', $adhesion->moyen_paiement);
+        $this->assertSame($code->id, $adhesion->promo_code_id);
+        $this->assertSame(1, $code->fresh()->uses_count);
+    }
+
+    public function test_un_code_promo_deja_utilise_est_refuse(): void
+    {
+        Mail::fake();
+        PromoCode::create([
+            'code' => 'MJA-UNIQUE',
+            'discount_percent' => 100,
+            'max_uses' => 1,
+            'uses_count' => 1,
+            'active' => true,
+        ]);
+
+        $this->post('/adhesion', $this->formulaire(['promo_code' => 'MJA-UNIQUE']))
+            ->assertSessionHasErrors('promo_code');
+
+        $this->assertSame(0, Adhesion::count());
     }
 }

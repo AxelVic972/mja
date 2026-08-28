@@ -211,16 +211,10 @@
                 <div class="text-sm mt-1 text-gray-300 font-display font-semibold">Années d'engagement</div>
             </div>
             <div>
-                <div class="font-display font-black text-4xl text-mja-red">
-                    <span class="stat-counter" data-target="5">0</span>
-                </div>
-                <div class="text-sm mt-1 text-gray-300 font-display font-semibold">Pôles d'action</div>
-            </div>
-            <div>
                 <div class="font-display font-black text-4xl text-mja-blue">
                     <span class="stat-counter" data-target="20000">0</span>+
                 </div>
-                <div class="text-sm mt-1 text-gray-300 font-display font-semibold">Petits-déj organisés</div>
+                <div class="text-sm mt-1 text-gray-300 font-display font-semibold">Heures de bénévolat / an</div>
             </div>
         </div>
     </div>

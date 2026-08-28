@@ -146,6 +146,10 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
         Route::post('adhesions/rattacher-periode', [Admin\AdhesionController::class, 'rattacherPeriode'])->name('adhesions.rattacher-periode');
         Route::delete('adhesions/{adhesion}', [Admin\AdhesionController::class, 'destroy'])->name('adhesions.destroy');
 
+        Route::get('codes-promo', [Admin\PromoCodeController::class, 'index'])->name('promo-codes.index');
+        Route::post('codes-promo', [Admin\PromoCodeController::class, 'store'])->name('promo-codes.store');
+        Route::patch('codes-promo/{promoCode}', [Admin\PromoCodeController::class, 'update'])->name('promo-codes.update');
+
         // Relances automatiques (paiement en attente, renouvellement de saison)
         Route::get('relances', [Admin\RelanceController::class, 'index'])->name('relances.index');
         Route::put('relances', [Admin\RelanceController::class, 'update'])->name('relances.update');

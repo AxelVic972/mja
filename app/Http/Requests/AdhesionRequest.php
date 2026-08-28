@@ -53,6 +53,7 @@ class AdhesionRequest extends FormRequest
             // depuis l'espace adhérent.
             'photo'             => 'nullable|image|max:5120',
             'payment_intent_id' => 'nullable|string|max:255',
+            'promo_code'        => 'nullable|string|max:40',
             'rgpd_consentement' => 'required|accepted',
         ];
 
@@ -115,7 +116,7 @@ class AdhesionRequest extends FormRequest
      */
     public function donneesAdhesion(): array
     {
-        $donnees = $this->safe()->except(['indicatif', 'payment_intent_id', 'photo']);
+        $donnees = $this->safe()->except(['indicatif', 'payment_intent_id', 'promo_code', 'photo']);
 
         $donnees['telephone']         = Telephone::complet($this->input('indicatif'), $this->input('telephone'));
         $donnees['reseaux_sociaux']   = $this->reseauxNettoyes();

@@ -8,12 +8,14 @@ use App\Mail\AdhesionNotification;
 use App\Mail\AdhesionStatusUpdate;
 use App\Models\Adhesion;
 use App\Models\AdhesionPeriod;
+use App\Models\PromoCode;
 use App\Models\Setting;
 use App\Services\StripeService;
 use App\Support\Cotisation;
 use App\Support\Telephone;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Password;
@@ -179,6 +181,21 @@ class AdhesionController extends Controller
             $donnees['photo'] = $request->file('photo')->store('adhesions/photos', 'public');
         }
 
+        // Un code à 100 % évite à une personne déjà débitée lors d'un incident
+        // de paiement de régler une seconde fois. La consommation est atomique.
+        $promoCode = null;
+        $codeSaisi = strtoupper(trim((string) $request->input('promo_code')));
+        if ($codeSaisi !== '' && $donnees['premiere_adhesion'] !== 'information') {
+            $promoCode = PromoCode::where('code', $codeSaisi)->first();
+
+            if (! $promoCode) {
+                return back()->withInput()->withErrors(['promo_code' => 'Ce code promotionnel est invalide, expiré, déjà utilisé ou ne couvre pas la totalité de la cotisation.']);
+            }
+
+            $donnees['promo_code_id'] = $promoCode->id;
+            $donnees['moyen_paiement'] = 'code_promo';
+        }
+
         // Paiement carte : le règlement a lieu dans le formulaire, avant l'envoi.
         // On revérifie systématiquement le PaymentIntent auprès de Stripe — le
         // navigateur n'est jamais une source de vérité sur un paiement.
@@ -195,11 +212,27 @@ class AdhesionController extends Controller
 
         $donnees['statut'] = match (true) {
             $donnees['premiere_adhesion'] === 'information' => 'prise_infos',
-            $cartePayee                                     => 'payee',
+            $cartePayee || $promoCode !== null               => 'payee',
             default                                         => 'nouvelle',
         };
 
-        $adhesion = Adhesion::create($donnees);
+        // La création et la consommation du code se font ensemble : si une
+        // écriture échoue, le code reste disponible.
+        $adhesion = DB::transaction(function () use ($donnees, $promoCode) {
+            if ($promoCode) {
+                $code = PromoCode::whereKey($promoCode->id)->lockForUpdate()->first();
+
+                if (! $code || ! $code->isUsable() || $code->discount_percent !== 100) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'promo_code' => 'Ce code promotionnel vient d’être utilisé ou n’est plus disponible.',
+                    ]);
+                }
+
+                $code->increment('uses_count');
+            }
+
+            return Adhesion::create($donnees);
+        });
 
         // Le paiement carte a été créé avant l'adhésion : on l'y rattache pour
         // qu'un évènement Stripe ultérieur sache de quelle demande il parle.
@@ -238,7 +271,10 @@ class AdhesionController extends Controller
         // portant le lien soit celui qui arrive en dernier.
         $this->preparerAcces($adhesion);
 
-        return back()->with('success', true)->with('renouvellement', $precedente !== null);
+        return back()
+            ->with('success', true)
+            ->with('paye', $cartePayee || $promoCode !== null)
+            ->with('renouvellement', $precedente !== null);
     }
 
     /**

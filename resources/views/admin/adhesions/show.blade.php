@@ -71,6 +71,9 @@
                     <div>
                         <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Moyen de paiement</div>
                         <div class="font-semibold text-gray-900">{{ $adhesion->label_moyen_paiement }}</div>
+                        @if($adhesion->promoCode)
+                        <div class="text-xs text-green-600 font-semibold mt-1"><i class="fas fa-ticket mr-1"></i>{{ $adhesion->promoCode->code }} ({{ $adhesion->promoCode->discount_percent }} %)</div>
+                        @endif
                     </div>
                     <div>
                         <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Période</div>

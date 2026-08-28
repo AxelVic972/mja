@@ -623,6 +623,13 @@
                                 @endif
                                 @error('moyen_paiement')<p class="text-mja-red text-xs mt-1 font-display font-semibold">{{ $message }}</p>@enderror
 
+                                <div class="mt-5 bg-green-50 border border-green-100 rounded-xl p-4">
+                                    <label for="promo-code" class="block text-sm font-display font-bold text-green-800 mb-1"><i class="fas fa-ticket mr-1"></i> Tu as un code promo ?</label>
+                                    <p class="text-xs text-green-700 mb-2">Si l’équipe te l’a transmis après un problème de paiement, saisis-le ici.</p>
+                                    <input type="text" name="promo_code" id="promo-code" value="{{ old('promo_code') }}" maxlength="40" autocomplete="off" placeholder="Ex. MJA-XXXXXXXX" class="w-full sm:w-72 uppercase border border-green-200 rounded-lg px-3 py-2 text-sm @error('promo_code') border-red-400 @enderror">
+                                    @error('promo_code')<p class="text-mja-red text-xs mt-1 font-display font-semibold">{{ $message }}</p>@enderror
+                                </div>
+
                                 @if(!empty($stripeEnabled))
                                 {{-- Paiement par carte, intégré au formulaire --}}
                                 <div id="bloc-cb" class="hidden mt-5 border-2 border-mja-blue/20 bg-mja-blue/5 rounded-2xl p-5">
@@ -847,7 +854,9 @@
         var cotisVisible = blocCotis && blocCotis.style.display !== 'none';
         var choix = document.querySelector('input[name="moyen_paiement"]:checked');
         var carte = choix && choix.value === 'en_ligne';
-        var bloque = cotisVisible && carte && !paye;
+        var codePromo = document.getElementById('promo-code');
+        var codeSaisi = codePromo && codePromo.value.trim() !== '';
+        var bloque = cotisVisible && carte && !paye && !codeSaisi;
 
         btnEnvoi.disabled = bloque;
         aideEnvoi.classList.toggle('hidden', !bloque);
@@ -982,6 +991,7 @@
             majBoutonEnvoi();
         });
     });
+    document.getElementById('promo-code')?.addEventListener('input', majBoutonEnvoi);
 
     // Le choix du type de demande peut masquer tout le bloc cotisation.
     document.querySelectorAll('input[name="premiere_adhesion"]').forEach(function (r) {

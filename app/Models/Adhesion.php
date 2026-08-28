@@ -15,7 +15,7 @@ class Adhesion extends Model
         'taille_tshirt', 'permis', 'problemes_sante', 'urgence_contact', 'message', 'photo',
         'moyen_paiement', 'droit_image', 'rgpd_consentement', 'statut', 'lu',
         'source_id', 'period_id', 'account_token', 'account_token_expires_at',
-        'renouvellement_token', 'renouvellement_token_expires_at', 'renouvelle_adhesion_id',
+        'renouvellement_token', 'renouvellement_token_expires_at', 'renouvelle_adhesion_id', 'promo_code_id',
     ];
 
     protected $casts = [
@@ -50,6 +50,11 @@ class Adhesion extends Model
     public function period(): BelongsTo
     {
         return $this->belongsTo(AdhesionPeriod::class, 'period_id');
+    }
+
+    public function promoCode(): BelongsTo
+    {
+        return $this->belongsTo(PromoCode::class);
     }
 
     /** Adhésion de la saison précédente dont celle-ci est le renouvellement. */
@@ -173,6 +178,7 @@ class Adhesion extends Model
             'espece'   => 'Espèces',
             'virement' => 'Virement bancaire',
             'en_ligne' => 'Paiement en ligne (CB)',
+            'code_promo' => 'Code promotionnel',
             default    => '—',
         };
     }
