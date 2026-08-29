@@ -133,13 +133,27 @@ class AdhesionController extends Controller
      * Crée un PaymentIntent pour le paiement carte intégré au formulaire.
      * Appelé en AJAX quand le visiteur choisit « Carte bancaire ».
      */
-    public function paymentIntent()
+    public function paymentIntent(Request $request)
     {
         if (! StripeService::enabled()) {
             return response()->json(['error' => 'Le paiement en ligne est indisponible.'], 422);
         }
 
-        $intent = StripeService::createPaymentIntent(StripeService::amountCents(), ['type' => 'adhesion']);
+        $promoCode = $this->promoCodeValide($request->input('promo_code'));
+        if ($request->filled('promo_code') && ! $promoCode) {
+            return response()->json(['error' => 'Ce code promotionnel est invalide, expiré ou déjà utilisé.'], 422);
+        }
+
+        $amount = $this->montantApresRemise($promoCode);
+        if ($amount === 0) {
+            return response()->json([
+                'free' => true,
+                'discount_percent' => $promoCode->discount_percent,
+                'total' => '0,00 €',
+            ]);
+        }
+
+        $intent = StripeService::createPaymentIntent($amount, ['type' => 'adhesion', 'promo_code' => $promoCode?->code]);
 
         if (! $intent) {
             return response()->json(['error' => "Le paiement est momentanément indisponible."], 502);
@@ -148,10 +162,11 @@ class AdhesionController extends Controller
         return response()->json([
             'client_secret' => $intent['client_secret'],
             'public_key'    => StripeService::publicKey(),
-            'amount'        => StripeService::amountCents(),
+            'amount'        => $amount,
             'cotisation'    => Cotisation::formatee(),
             'frais'         => Cotisation::fraisFormates(),
-            'total'         => Cotisation::carteFormatee(),
+            'total'         => number_format($amount / 100, 2, ',', ' ') . ' €',
+            'discount_percent' => $promoCode?->discount_percent,
         ]);
     }
 
@@ -186,14 +201,18 @@ class AdhesionController extends Controller
         $promoCode = null;
         $codeSaisi = strtoupper(trim((string) $request->input('promo_code')));
         if ($codeSaisi !== '' && $donnees['premiere_adhesion'] !== 'information') {
-            $promoCode = PromoCode::where('code', $codeSaisi)->first();
+            $promoCode = $this->promoCodeValide($codeSaisi);
 
             if (! $promoCode) {
-                return back()->withInput()->withErrors(['promo_code' => 'Ce code promotionnel est invalide, expiré, déjà utilisé ou ne couvre pas la totalité de la cotisation.']);
+                return back()->withInput()->withErrors(['promo_code' => 'Ce code promotionnel est invalide, expiré ou déjà utilisé.']);
             }
 
             $donnees['promo_code_id'] = $promoCode->id;
-            $donnees['moyen_paiement'] = 'code_promo';
+            if ($promoCode->discount_percent === 100) {
+                $donnees['moyen_paiement'] = 'code_promo';
+            } elseif (($donnees['moyen_paiement'] ?? null) !== 'en_ligne') {
+                return back()->withInput()->withErrors(['moyen_paiement' => 'Pour une remise partielle, choisissez le paiement par carte bancaire.']);
+            }
         }
 
         // Paiement carte : le règlement a lieu dans le formulaire, avant l'envoi.
@@ -202,7 +221,7 @@ class AdhesionController extends Controller
         $cartePayee = false;
 
         if (($donnees['moyen_paiement'] ?? null) === 'en_ligne') {
-            $cartePayee = StripeService::paiementValide($request->input('payment_intent_id'));
+            $cartePayee = StripeService::paiementValide($request->input('payment_intent_id'), $this->montantApresRemise($promoCode));
 
             if (! $cartePayee) {
                 return back()->withInput()
@@ -222,7 +241,7 @@ class AdhesionController extends Controller
             if ($promoCode) {
                 $code = PromoCode::whereKey($promoCode->id)->lockForUpdate()->first();
 
-                if (! $code || ! $code->isUsable() || $code->discount_percent !== 100) {
+                if (! $code || ! $code->isUsable()) {
                     throw \Illuminate\Validation\ValidationException::withMessages([
                         'promo_code' => 'Ce code promotionnel vient d’être utilisé ou n’est plus disponible.',
                     ]);
@@ -275,6 +294,21 @@ class AdhesionController extends Controller
             ->with('success', true)
             ->with('paye', $cartePayee || $promoCode !== null)
             ->with('renouvellement', $precedente !== null);
+    }
+
+    private function promoCodeValide(?string $code): ?PromoCode
+    {
+        $code = strtoupper(trim((string) $code));
+        $promo = $code === '' ? null : PromoCode::where('code', $code)->first();
+
+        return $promo?->isUsable() ? $promo : null;
+    }
+
+    private function montantApresRemise(?PromoCode $promoCode): int
+    {
+        $pourcentage = $promoCode?->discount_percent ?? 0;
+
+        return (int) round(StripeService::amountCents() * (100 - $pourcentage) / 100);
     }
 
     /**

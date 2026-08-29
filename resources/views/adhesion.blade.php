@@ -627,6 +627,7 @@
                                     <label for="promo-code" class="block text-sm font-display font-bold text-green-800 mb-1"><i class="fas fa-ticket mr-1"></i> Tu as un code promo ?</label>
                                     <p class="text-xs text-green-700 mb-2">Si l’équipe te l’a transmis après un problème de paiement, saisis-le ici.</p>
                                     <input type="text" name="promo_code" id="promo-code" value="{{ old('promo_code') }}" maxlength="40" autocomplete="off" placeholder="Ex. MJA-XXXXXXXX" class="w-full sm:w-72 uppercase border border-green-200 rounded-lg px-3 py-2 text-sm @error('promo_code') border-red-400 @enderror">
+                                    <p id="promo-info" class="hidden text-xs text-green-700 font-semibold mt-2"></p>
                                     @error('promo_code')<p class="text-mja-red text-xs mt-1 font-display font-semibold">{{ $message }}</p>@enderror
                                 </div>
 
@@ -814,7 +815,7 @@
     var aideCb    = document.getElementById('cb-aide');
     var champIntent = document.getElementById('payment-intent-id');
 
-    var stripe = null, elements = null, monte = false, paye = false;
+    var stripe = null, elements = null, paymentElement = null, monte = false, paye = false, promoTimer = null;
 
     /**
      * Un blocage de Stripe.js a deux causes très différentes : une extension du
@@ -854,9 +855,7 @@
         var cotisVisible = blocCotis && blocCotis.style.display !== 'none';
         var choix = document.querySelector('input[name="moyen_paiement"]:checked');
         var carte = choix && choix.value === 'en_ligne';
-        var codePromo = document.getElementById('promo-code');
-        var codeSaisi = codePromo && codePromo.value.trim() !== '';
-        var bloque = cotisVisible && carte && !paye && !codeSaisi;
+        var bloque = cotisVisible && carte && !paye;
 
         btnEnvoi.disabled = bloque;
         aideEnvoi.classList.toggle('hidden', !bloque);
@@ -921,21 +920,42 @@
     }
 
     function creerIntent() {
+        var codePromo = document.getElementById('promo-code');
         return fetch(@json(route('adhesion.payment-intent')), {
             method: 'POST',
             headers: {
                 // Le layout n'expose pas de meta csrf-token : on reprend celui du formulaire.
                 'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
-                'Accept': 'application/json'
-            }
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ promo_code: codePromo ? codePromo.value : '' })
         })
         .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
         .then(function (res) {
             if (!res.ok) { throw new Error(res.data.error || 'Paiement indisponible.'); }
 
+            var infoPromo = document.getElementById('promo-info');
+            if (res.data.free) {
+                paye = true;
+                zone.classList.add('hidden');
+                aideCb.classList.add('hidden');
+                badge.innerHTML = '<i class="fas fa-check-circle"></i> Code promo appliqué';
+                badge.classList.remove('hidden');
+                badge.classList.add('inline-flex');
+                if (infoPromo) { infoPromo.textContent = 'Remise de ' + res.data.discount_percent + ' % appliquée : aucun paiement à effectuer.'; infoPromo.classList.remove('hidden'); }
+                majBoutonEnvoi();
+                return;
+            }
+
+            if (infoPromo) {
+                infoPromo.classList.toggle('hidden', !res.data.discount_percent);
+                if (res.data.discount_percent) { infoPromo.textContent = 'Remise de ' + res.data.discount_percent + ' % appliquée. Montant à régler par CB : ' + res.data.total + '.'; }
+            }
             stripe = Stripe(res.data.public_key);
             elements = stripe.elements({ clientSecret: res.data.client_secret, locale: 'fr' });
-            elements.create('payment', { layout: 'tabs' }).mount('#cb-element');
+            paymentElement = elements.create('payment', { layout: 'tabs' });
+            paymentElement.mount('#cb-element');
 
             btnPayer.disabled = false;
             txtPayer.textContent = 'Payer la cotisation';
@@ -991,7 +1011,19 @@
             majBoutonEnvoi();
         });
     });
-    document.getElementById('promo-code')?.addEventListener('input', majBoutonEnvoi);
+    document.getElementById('promo-code')?.addEventListener('input', function () {
+        majBoutonEnvoi();
+        var carte = document.querySelector('input[name="moyen_paiement"]:checked')?.value === 'en_ligne';
+        if (!carte || paye) return;
+        clearTimeout(promoTimer);
+        promoTimer = setTimeout(function () {
+            if (paymentElement) { paymentElement.unmount(); paymentElement = null; }
+            document.getElementById('cb-element').innerHTML = '';
+            elements = null;
+            monte = false;
+            monterElements();
+        }, 500);
+    });
 
     // Le choix du type de demande peut masquer tout le bloc cotisation.
     document.querySelectorAll('input[name="premiere_adhesion"]').forEach(function (r) {

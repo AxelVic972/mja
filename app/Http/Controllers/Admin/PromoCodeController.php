@@ -21,7 +21,7 @@ class PromoCodeController extends Controller
     {
         $data = $request->validate([
             'code' => ['nullable', 'string', 'max:40', 'regex:/^[A-Za-z0-9_-]+$/', Rule::unique('promo_codes', 'code')],
-            'discount_percent' => 'required|integer|in:100',
+            'discount_percent' => 'required|integer|min:1|max:100',
             'max_uses' => 'required|integer|min:1|max:10000',
             'expires_at' => 'nullable|date|after:now',
             'note' => 'nullable|string|max:500',

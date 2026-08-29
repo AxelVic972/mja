@@ -111,7 +111,7 @@ class StripeService
      * Vérifie côté serveur qu'un paiement carte a bien abouti pour le bon montant.
      * Ne jamais se fier au seul retour du navigateur.
      */
-    public static function paiementValide(?string $intentId): bool
+    public static function paiementValide(?string $intentId, ?int $amountCents = null): bool
     {
         if (! $intentId || ! self::enabled()) {
             return false;
@@ -122,7 +122,7 @@ class StripeService
         return $intent !== null
             && ($intent['status'] ?? null) === 'succeeded'
             && ($intent['currency'] ?? null) === 'eur'
-            && (int) ($intent['amount_received'] ?? 0) >= self::amountCents();
+            && (int) ($intent['amount_received'] ?? 0) >= ($amountCents ?? self::amountCents());
     }
 
     /** Crée une session Stripe Checkout et renvoie l'URL de paiement (ou null). */
