@@ -1693,11 +1693,11 @@ function renderPaper(style, variant, uid, embed){
   s += T(infoX, qrTop + 46, '', { size: 22, fill: p.fg2, ls: 3 });
   s += T(infoX, qrTop + 86, SITE, { size: 30, fill: p.fg, w: 700 });
   s += instaTag(infoX, qrTop + 132, 21, p.fg2, { w:500 })
-     + T(infoX, qrTop + 168, MAIL, { size: 21, w: 500, fill: p.fg2 });
+     + T(infoX, qrTop + 168, 'Tél. ' + TEL, { size: 21, w: 700, fill: p.fg2 })
+     + T(infoX, qrTop + 202, MAIL, { size: 21, w: 500, fill: p.fg2 });
 
   s += '<rect x="' + M + '" y="' + footTop + '" width="' + avail + '" height="2" fill="' + p.rule + '"/>';
   /* Pas d'adresse postale : on ne reçoit pas les adhésions par courrier. */
-  s += T(W - M, footTop + 52, 'Tél. ' + TEL, { size: 21, w: 600, fill: p.foot, anchor: 'end' });
   s += triBar(0, H - bar, W, bar);
   return svgWrap(W, H, uid, s, embed);
 }
@@ -2087,7 +2087,8 @@ function renderTrio(style, variant, uid, embed, W, H){
   s += T(ix, qy3 + isz * 1.3, 'SCANNE OU RENDS-TOI SUR', { size: isz, fill: '#6C7A91', ls: isz * 0.10, w: 700 });
   s += T(ix, qy3 + isz * 2.9, '16 – 35 ans', { size: isz * 1.15, fill: C.navy, w: 800 });
   s += T(ix, qy3 + isz * 4.3, 'Adhésion en ligne', { size: isz, fill: '#6C7A91', w: 600 });
-  s += instaTag(ix, qy3 + isz * 5.7, isz, '#6C7A91');
+  s += instaTag(ix, qy3 + isz * 5.7, isz, '#6C7A91')
+     + T(ix, qy3 + isz * 7.1, 'Tél. ' + TEL, { size: isz * 0.82, w: 700, fill: '#6C7A91' });
 
   var bX = ix + W * 0.24, bW2 = W - bX - M - W * 0.022;
   if (bW2 > W * 0.20) {
@@ -2100,7 +2101,6 @@ function renderTrio(style, variant, uid, embed, W, H){
     }
   }
 
-  s += T(W - M, H - H * 0.012, 'Tel. ' + TEL, { size: Math.min(W * 0.018, H * 0.013), w: 700, fill: C.navy, anchor: 'end' });
   s += triBar(0, H - bar, W, bar);
   return svgWrap(W, H, uid, s, embed);
 }
