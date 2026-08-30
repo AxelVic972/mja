@@ -664,20 +664,28 @@ function instaGlyph(x, y, size, fill){
     + '<circle cx="' + (x + size * 0.735).toFixed(2) + '" cy="' + (y - size * 0.545).toFixed(2) + '" r="' + (size * 0.072).toFixed(2) + '" fill="' + fill + '"/>';
 }
 
-/** Pseudo Instagram précédé de son pictogramme. */
+/** Pictogramme Facebook, placé devant le nom du compte. */
+function facebookGlyph(x, y, size, fill){
+  var cx = x + size * 0.42, cy = y - size * 0.42, r = size * 0.42;
+  return '<circle cx="' + cx.toFixed(2) + '" cy="' + cy.toFixed(2) + '" r="' + r.toFixed(2) + '" fill="' + fill + '"/>'
+    + '<text x="' + (cx - size * 0.07).toFixed(2) + '" y="' + (cy + size * 0.25).toFixed(2) + '" fill="#FFFFFF" font-family="Arial,sans-serif" font-size="' + (size * 0.86).toFixed(2) + '" font-weight="700">f</text>';
+}
+
+/** Comptes Instagram et Facebook, chacun précédé de son pictogramme. */
 function instaTag(x, y, size, fill, opts){
-  var o = opts || {}, gap = size * 1.25, social = INSTA + ' · Facebook ' + FACEBOOK;
-  if (o.anchor === 'end') {
-    var w = measure(social, size * 0.78, o.w || 600, FAM_GS);
-    return instaGlyph(x - w - gap, y, size, fill)
-      + T(x, y, social, { size:size * 0.78, fill:fill, w:o.w || 600, anchor:'end' });
-  }
-  if (o.anchor === 'middle') {
-    var wm = measure(social, size * 0.78, o.w || 600, FAM_GS), x0 = x - (wm + gap) / 2;
-    return instaGlyph(x0, y, size, fill)
-      + T(x0 + gap, y, social, { size:size * 0.78, fill:fill, w:o.w || 600 });
-  }
-  return instaGlyph(x, y, size, fill) + T(x + gap, y, social, { size:size * 0.78, fill:fill, w:o.w || 600 });
+  var o = opts || {}, wght = o.w || 600, textSize = size * 0.78;
+  var gap = size * 1.25, between = size * 0.58, fbSize = size * 0.86;
+  var instaText = texteLibre(INSTA), facebookText = texteLibre(FACEBOOK);
+  var instaW = measure(instaText, textSize, wght, FAM_GS), facebookW = measure(facebookText, textSize, wght, FAM_GS);
+  var totalW = gap + instaW + between + fbSize + between * 0.72 + facebookW;
+  var left = x;
+  if (o.anchor === 'end') left = x - totalW;
+  if (o.anchor === 'middle') left = x - totalW / 2;
+  var fbX = left + gap + instaW + between;
+  return instaGlyph(left, y, size, fill)
+    + T(left + gap, y, INSTA, { size:textSize, fill:fill, w:wght })
+    + facebookGlyph(fbX, y, fbSize, fill)
+    + T(fbX + fbSize + between * 0.72, y, FACEBOOK, { size:textSize, fill:fill, w:wght });
 }
 
 /* =====================================================================
@@ -714,6 +722,7 @@ var PICTOS = {
            + '<path d="m3.4 7 8.6 6 8.6-6" fill="none" stroke-width="2" stroke-linecap="round"/>',
   insta:     '<rect x="2.6" y="2.6" width="18.8" height="18.8" rx="5.4" fill="none" stroke-width="2.1"/>'
            + '<circle cx="12" cy="12" r="4.6" fill="none" stroke-width="2.1"/><circle cx="17.4" cy="6.6" r="1.3"/>',
+  facebook:  '<circle cx="12" cy="12" r="9.4"/><text x="10.2" y="17.4" fill="#FFFFFF" stroke="none" font-family="Arial,sans-serif" font-size="15" font-weight="700">f</text>',
   cible:     '<circle cx="12" cy="12" r="9" fill="none" stroke-width="2"/><circle cx="12" cy="12" r="4.6" fill="none" stroke-width="2"/><circle cx="12" cy="12" r="1.4"/>',
   coeur:     '<path d="M12 20.4S3.4 15.2 3.4 9.4a4.6 4.6 0 0 1 8.6-2.4 4.6 4.6 0 0 1 8.6 2.4c0 5.8-8.6 11-8.6 11z" fill="none" stroke-width="2" stroke-linejoin="round"/>',
   ecran:     '<rect x="2.6" y="4" width="18.8" height="12.4" rx="2.2" fill="none" stroke-width="2"/>'
@@ -1964,9 +1973,9 @@ function renderModerne(style, variant, uid, embed, W, H){
 
   var cX = fx + Math.max(lw, W * 0.20) + W * 0.035, cW = W - cX - M;
   if (cW > W * 0.18) {
-    var contacts = [['telephone', 'Tel. ' + TEL], ['enveloppe', MAIL], ['insta', INSTA + ' · Facebook ' + FACEBOOK]];
+    var contacts = [['telephone', 'Tel. ' + TEL], ['enveloppe', MAIL], ['insta', INSTA], ['facebook', FACEBOOK]];
     for (var q = 0; q < contacts.length; q++) {
-      var qy2 = fY + footH * (0.30 + q * 0.22);
+      var qy2 = fY + footH * (0.22 + q * 0.185);
       s += pastillePicto(cX + fs * 0.9, qy2 - fs * 0.30, fs * 0.86, contacts[q][0], C.yellow, C.navy);
       s += TFit(cX + fs * 2.4, qy2, contacts[q][1], cW - fs * 2.6, { size: fs, w: 600, fill: '#FFFFFF' });
     }
