@@ -1697,7 +1697,6 @@ function renderPaper(style, variant, uid, embed){
 
   s += '<rect x="' + M + '" y="' + footTop + '" width="' + avail + '" height="2" fill="' + p.rule + '"/>';
   /* Pas d'adresse postale : on ne reçoit pas les adhésions par courrier. */
-  s += T(M, footTop + 52, SLOGAN, { size: 21, w: 600, fill: p.foot });
   s += T(W - M, footTop + 52, 'Tél. ' + TEL, { size: 21, w: 600, fill: p.foot, anchor: 'end' });
   s += triBar(0, H - bar, W, bar);
   return svgWrap(W, H, uid, s, embed);
@@ -2101,7 +2100,6 @@ function renderTrio(style, variant, uid, embed, W, H){
     }
   }
 
-  s += T(M, H - H * 0.012, SLOGAN, { size: Math.min(W * 0.018, H * 0.013), w: 700, fill: C.navy });
   s += T(W - M, H - H * 0.012, 'Tel. ' + TEL, { size: Math.min(W * 0.018, H * 0.013), w: 700, fill: C.navy, anchor: 'end' });
   s += triBar(0, H - bar, W, bar);
   return svgWrap(W, H, uid, s, embed);
@@ -2169,7 +2167,6 @@ function renderVerso(style, variant, uid, embed){
     s += T(W - M - 176, 1620, 'Scanne et adhère', { size: 24, fill: C.navy, anchor: 'end' });
     s += T(W - M - 176, 1656, SITE, { size: 22, fill: C.blue, anchor: 'end', w: 700 });
   }
-  s += T(M, 1624, SLOGAN, { size: 22, w: 600, fill: '#98A5B8' });
   s += instaTag(M, 1660, 22, '#98A5B8');
   s += wordmark(M, 1716, 44);
   s += triBar(0, H - 18, W, 18);
