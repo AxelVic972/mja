@@ -644,9 +644,9 @@ var C = { navy:'#1A3D8A', dark:'#2048A4', blue:'#3DAEF5', yellow:'#F5A623',
           red:'#D0021B', ink:'#0B1E45', blanc:'#FFFFFF' };
 var FAM = "'Gill Sans','Montserrat',sans-serif";
 
-var LOGO_URL = @json(asset('images/logo.jpg'));
+var LOGO_URL = @json(asset('images/logomjat.png'));
 var ORG      = "MADIN' JEUNES AMBITION";
-var SLOGAN   = "RELÈVE TOUS LES DÉFIS !";
+var SLOGAN   = "VIENS RELEVER TOUS LES DÉFIS !";
 var SITE     = "mja-martinique.com";
 var INSTA    = "@madin_jeunes_ambition";
 var TIKTOK   = "@madin_jeunes";
@@ -691,14 +691,14 @@ BIBLIO.forEach(function (m) {
 /* Cartons d'ouverture et de fermeture. `dessin` reçoit l'avancement t ∈ [0,1]. */
 var INTROS = [
   { id:'aucune', nom:'Aucune',                 duree:0,   aide:"Le montage démarre directement sur le premier plan." },
-  { id:'logo',   nom:'Logo qui éclot',         duree:2.0, aide:"Le logo apparaît en zoom, le nom se pose dessous." },
-  { id:'titre',  nom:'Titre plein écran',      duree:2.2, aide:"Fond navy, titre en gros, filet tricolore qui balaie." },
+  { id:'logo',   nom:'Logo qui éclot',         duree:3.2, aide:"Le logo apparaît en zoom, le nom se pose dessous." },
+  { id:'titre',  nom:'Titre plein écran',      duree:3.4, aide:"Fond navy, titre en gros, filet tricolore qui balaie." },
   { id:'flash',  nom:'Flash tricolore',        duree:1.6, aide:"Trois bandes de couleur balaient l'écran puis le titre tombe." },
   { id:'compte', nom:'Décompte 3-2-1',         duree:2.4, aide:"Décompte rythmé, utile pour accrocher dès la première seconde." }
 ];
 var OUTROS = [
   { id:'aucune', nom:'Aucune',                 duree:0,   aide:"Le montage s'arrête sur le dernier plan." },
-  { id:'appel',  nom:"Appel à l'action",       duree:3.8, aide:"« J'ADHÈRE », le slogan, le site, puis les trois comptes avec leur pictogramme." },
+  { id:'appel',  nom:"Appel à l'action",       duree:5.8, aide:"« J'ADHÈRE », le slogan, le site, puis les trois comptes avec leur pictogramme." },
   { id:'reseaux',nom:'Réseaux sociaux',        duree:4.6, aide:"« SUIS-NOUS », les trois comptes en grand — Instagram, TikTok, Facebook — puis le slogan." },
   { id:'logo',   nom:'Logo et slogan',         duree:3.0, aide:"Retour au logo, slogan en dessous, pictogrammes des trois réseaux." },
   { id:'contact',nom:'Coordonnées',            duree:4.0, aide:"Le slogan, les trois réseaux avec leur pictogramme, le site et le téléphone." }
@@ -719,7 +719,7 @@ var MONTAGE = [];              /* [{ media, duree, effet, transition }] */
 var OPT = {
   largeur:1080, hauteur:1920, intro:'logo', outro:'appel',
   accroche:"MJ'ADHÉSION", sous:'SAISON 2026-2027',
-  transition:'fondu', dureePhoto:2, logo:true, barre:true, son:false,
+  transition:'fondu', dureePhoto:3, logo:true, barre:true, son:false,
   musique:'', volume:0.7, musiqueDepart:0, qualite:'haute'
 };
 
@@ -795,10 +795,7 @@ function filigrane(){
   var t = U() * 0.10, m = U() * 0.045;
   ctx.save();
   ctx.globalAlpha = 0.88;
-  ctx.fillStyle = 'rgba(255,255,255,.92)';
-  arrondi(W() - m - t, m, t, t, t * 0.22);
-  ctx.fill();
-  ctx.drawImage(logoImg, W() - m - t + t * 0.08, m + t * 0.08, t * 0.84, t * 0.84);
+  ctx.drawImage(logoImg, W() - m - t, m, t, t);
   ctx.restore();
 }
 
@@ -876,6 +873,12 @@ function pictoReseau(id, cx, cy, d){
     ctx.textAlign = 'center';
     ctx.textBaseline = 'alphabetic';
     ctx.fillText('f', 0, 9.8);
+  } else if (id === 'web') {
+    ctx.strokeStyle = '#1E93D6';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(-9, 0); ctx.lineTo(9, 0); ctx.moveTo(0, -9); ctx.lineTo(0, 9); ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(0, 0, 4, 9, 0, 0, Math.PI * 2); ctx.stroke();
   }
   ctx.restore();
 }
@@ -908,6 +911,21 @@ function ligneReseau(reseau, y, taille){
   ctx.textAlign = 'center';
 }
 
+/** Ligne « pictogramme web + nom du site », centrée comme les réseaux. */
+function ligneSite(y, taille, couleur){
+  var d = taille * 1.55, ecart = taille * 0.55;
+  ctx.font = '700 ' + taille + 'px ' + FAM;
+  var large = d + ecart + ctx.measureText(SITE).width;
+  var x = (W() - large) / 2, cy = y - taille * 0.35;
+  pastille(x + d / 2, cy, d / 2);
+  pictoReseau('web', x + d / 2, cy, d * 0.62);
+  ctx.fillStyle = couleur || '#fff';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText(SITE, x + d + ecart, y);
+  ctx.textAlign = 'center';
+}
+
 /**
  * Les trois pastilles côte à côte, sans pseudo, pour les cartons déjà
  * chargés. `sec` est le temps écoulé depuis le début de leur arrivée, en
@@ -935,9 +953,7 @@ function dessinerIntro(id, t){
     if (logoImg.complete && logoImg.naturalWidth) {
       var s = u * 0.34 * k;
       ctx.save(); ctx.globalAlpha = a;
-      ctx.fillStyle = '#fff';
-      arrondi(W() / 2 - s / 2, H() * 0.32 - s / 2, s, s, s * 0.20); ctx.fill();
-      ctx.drawImage(logoImg, W() / 2 - s * 0.42, H() * 0.32 - s * 0.42, s * 0.84, s * 0.84);
+      ctx.drawImage(logoImg, W() / 2 - s / 2, H() * 0.32 - s / 2, s, s);
       ctx.restore();
     }
     var b = attenue((t - 0.35) / 0.45);
@@ -1011,7 +1027,7 @@ function dessinerOutro(id, t){
     texte(SLOGAN, H() * 0.41, u * 0.046, '#fff', true);
     ctx.restore();
     ctx.save(); ctx.globalAlpha = arrive(0.8, 0.4);
-    texte(SITE, H() * 0.49, u * 0.052, '#BDD4F5', true);
+    ligneSite(H() * 0.49, u * 0.052, '#BDD4F5');
     ctx.restore();
     /* Les trois comptes arrivent l'un après l'autre sous l'appel : le
        regard est déjà là, il n'a qu'à descendre. */
@@ -1041,23 +1057,21 @@ function dessinerOutro(id, t){
     }
     ctx.save(); ctx.globalAlpha = arrive(2.5, 0.4);
     texte(SLOGAN, H() * 0.855, u * 0.046, C.yellow, true);
-    texte(SITE, H() * 0.915, u * 0.038, '#fff', true);
+    ligneSite(H() * 0.915, u * 0.038, '#fff');
     ctx.restore();
     filetTricolore(H() - u * 0.026, u * 0.026, 1);
 
   } else if (id === 'logo') {
     fond(C.navy);
     if (logoImg.complete && logoImg.naturalWidth) {
-      var s = u * 0.32;
+      var s = u * 0.40;
       ctx.save(); ctx.globalAlpha = a;
-      ctx.fillStyle = '#fff';
-      arrondi(W() / 2 - s / 2, H() * 0.40 - s / 2, s, s, s * 0.20); ctx.fill();
-      ctx.drawImage(logoImg, W() / 2 - s * 0.42, H() * 0.40 - s * 0.42, s * 0.84, s * 0.84);
+      ctx.drawImage(logoImg, W() / 2 - s / 2, H() * 0.40 - s / 2, s, s);
       ctx.restore();
     }
     ctx.save(); ctx.globalAlpha = arrive(0.6, 0.45);
     texte(SLOGAN, H() * 0.58, u * 0.055, C.yellow, true);
-    texte(SITE, H() * 0.66, u * 0.042, '#fff', true);
+    ligneSite(H() * 0.66, u * 0.042, '#fff');
     ctx.restore();
     /* Carton sobre : les pictogrammes seuls, sans les pseudos, disent où
        nous retrouver sans surcharger la fin du plan. */
@@ -1078,7 +1092,7 @@ function dessinerOutro(id, t){
     }
     ctx.save(); ctx.globalAlpha = arrive(1.9, 0.4);
     texte('Site', H() * 0.71, u * 0.030, '#8FB2E8', true);
-    texte(SITE, H() * 0.765, u * 0.046, '#fff', true);
+    ligneSite(H() * 0.765, u * 0.046, '#fff');
     texte('Téléphone', H() * 0.83, u * 0.030, '#8FB2E8', true);
     texte('0696 43 88 21', H() * 0.885, u * 0.050, '#fff', true);
     ctx.restore();

@@ -375,6 +375,12 @@ footer.foot a{color:#fff;font-weight:600;text-decoration:none}
           Apparaissent sur le gabarit « Moderne » (flyers, affiches, kakémonos). Quatre lignes au maximum.</div>
       </div>
       <div class="field">
+        <label for="opt-textes">Modifier librement les textes</label>
+        <textarea id="opt-textes" rows="5" spellcheck="true" placeholder="Texte actuel | Nouveau texte&#10;J'ADHÈRE | JE REJOINS MJA"
+                  style="width:100%;font:inherit;font-size:13px;line-height:1.5;padding:9px 11px;border:1px solid #d9e2f0;border-radius:9px;resize:vertical"></textarea>
+        <div class="hint">Une modification par ligne, au format <b>Texte actuel | Nouveau texte</b>. Les remplacements sont appliqués à tous les visuels et exports.</div>
+      </div>
+      <div class="field">
         <label for="opt-qrcolor">Couleur du QR code</label>
         <select id="opt-qrcolor">
           <option value="#9B1C1E">Bordeaux (comme la saison 2025)</option>
@@ -533,9 +539,22 @@ var TAG    = "Association de jeunes engagés en Martinique et au-delà";
 var CRI    = ['RELÈVE', 'TOUS LES', 'DÉFIS !'];
 var SLOGAN = "Madin' Jeunes Ambition relève tous les défis !";
 var INSTA = "@madin_jeunes_ambition";
+var FACEBOOK = "MadinJeunesAmbition";
 var SITE  = "mja-martinique.com";
 var MAIL  = @json(config('mja.contact_email'));
 var TEL   = "0696 43 88 21";
+/* Corrections libres saisies dans le panneau : chaque clé est remplacée dans
+   tous les gabarits, y compris lors des exports PNG/PDF/vidéo. */
+var TEXTES_LIBRES = {};
+
+function texteLibre(texte){
+  var sortie = String(texte);
+  Object.keys(TEXTES_LIBRES).forEach(function(avant){
+    if (!avant) return;
+    sortie = sortie.split(avant).join(TEXTES_LIBRES[avant]);
+  });
+  return sortie;
+}
 
 /* Options globales, pilotées par le panneau du haut */
 var OPT = {
@@ -647,18 +666,18 @@ function instaGlyph(x, y, size, fill){
 
 /** Pseudo Instagram précédé de son pictogramme. */
 function instaTag(x, y, size, fill, opts){
-  var o = opts || {}, gap = size * 1.25;
+  var o = opts || {}, gap = size * 1.25, social = INSTA + ' · Facebook ' + FACEBOOK;
   if (o.anchor === 'end') {
-    var w = measure(INSTA, size, o.w || 600, FAM_GS);
+    var w = measure(social, size * 0.78, o.w || 600, FAM_GS);
     return instaGlyph(x - w - gap, y, size, fill)
-      + T(x, y, INSTA, { size:size, fill:fill, w:o.w || 600, anchor:'end' });
+      + T(x, y, social, { size:size * 0.78, fill:fill, w:o.w || 600, anchor:'end' });
   }
   if (o.anchor === 'middle') {
-    var wm = measure(INSTA, size, o.w || 600, FAM_GS), x0 = x - (wm + gap) / 2;
+    var wm = measure(social, size * 0.78, o.w || 600, FAM_GS), x0 = x - (wm + gap) / 2;
     return instaGlyph(x0, y, size, fill)
-      + T(x0 + gap, y, INSTA, { size:size, fill:fill, w:o.w || 600 });
+      + T(x0 + gap, y, social, { size:size * 0.78, fill:fill, w:o.w || 600 });
   }
-  return instaGlyph(x, y, size, fill) + T(x + gap, y, INSTA, { size:size, fill:fill, w:o.w || 600 });
+  return instaGlyph(x, y, size, fill) + T(x + gap, y, social, { size:size * 0.78, fill:fill, w:o.w || 600 });
 }
 
 /* =====================================================================
@@ -757,6 +776,7 @@ function fitSize(text, maxW, maxSize, weight, fam){
    ===================================================================== */
 function T(x, y, s, o){
   o = o || {};
+  s = texteLibre(s);
   var fam = o.f === 'ag' ? FAM_AG : FAM_GS;
   return '<text x="' + x + '" y="' + y + '"'
     + ' font-family="' + fam + '"'
@@ -836,16 +856,10 @@ function rings(cx, cy, r, op){
 function logoHref(embed){
   return embed && ASSETS.logo ? 'data:image/png;base64,' + ASSETS.logo : ASSET('images/logomjat.png');
 }
-/** Logo MJA. Sur fond sombre ou photo, on le pose sur une plaque blanche
-    arrondie (même traitement que sur le site) pour qu'il reste lisible. */
-function logoImg(x, y, size, embed, plate){
-  var href = logoHref(embed), s = '';
-  if (plate) {
-    var pd = size * 0.10;
-    s += '<rect x="' + (x - pd) + '" y="' + (y - pd) + '" width="' + (size + pd * 2) + '" height="' + (size + pd * 2)
-      + '" rx="' + (size * 0.18) + '" fill="#FFFFFF"/>';
-  }
-  return s + '<image x="' + x + '" y="' + y + '" width="' + size + '" height="' + size
+/** Logo MJA PNG détouré : aucun fond ni plaque ajoutée par les gabarits. */
+function logoImg(x, y, size, embed){
+  var href = logoHref(embed);
+  return '<image x="' + x + '" y="' + y + '" width="' + size + '" height="' + size
     + '" href="' + href + '" xlink:href="' + href + '" preserveAspectRatio="xMidYMid meet"/>';
 }
 /** Filigrane : le logo répété en très basse opacité — signature visuelle MJA
@@ -899,8 +913,8 @@ function cta(x, y, w, h, label, bg, fg, size){
  * sur un post ou un flyer, le lecteur croit pouvoir cliquer. On utilise donc
  * des codes d'imprimé, sans coin arrondi ni aspect « cliquable » :
  *   · bandeau  : aplat pleine largeur, bord à bord, comme une manchette ;
- *   · typo     : le libellé en très grand, flèche + filet épais, aucun cadre ;
- *   · manuscrit: le libellé penché et la flèche dessinée (codes MJA 2025).
+ *   · typo     : le libellé en très grand, avec un filet épais, aucun cadre ;
+ *   · manuscrit: le libellé penché et un filet graphique.
  */
 function arrowGlyph(x, y, len, sw, fill){
   var h = sw * 2.1;
@@ -916,10 +930,8 @@ function calloutBand(W, y, label, url, bg, fg, u, urlFill){
   var h = u * 0.115, size = u * 0.042;
   var s = '<rect x="0" y="' + y + '" width="' + W + '" height="' + h + '" fill="' + bg + '"/>';
   var txtW = measure(label, size, 800, FAM_AG) + size * 0.06 * (label.length - 1);
-  var fl = size * 0.9, gap = size * 0.5;
-  var x0 = (W - (txtW + gap + fl)) / 2;
+  var x0 = (W - txtW) / 2;
   s += T(x0, y + h / 2 + size * 0.34, label, { size: size, f: 'ag', w: 800, fill: fg, ls: size * 0.06 });
-  s += arrowGlyph(x0 + txtW + gap, y + h / 2, fl, u * 0.006, fg);
   if (url) s += T(W / 2, y + h + u * 0.048, url, { size: u * 0.028, fill: urlFill || C.dark, anchor: 'middle', w: 700 });
   return { svg: s, h: h + (url ? u * 0.068 : 0) };
 }
@@ -929,15 +941,14 @@ function calloutType(x, y, maxW, label, url, accent, ink, u){
   var size = fitSizeLS(label, maxW * 0.88, u * 0.062, 800, FAM_AG, 0, u * 0.062);
   var txtW = measure(label, size, 800, FAM_AG);
   var s = T(x, y + size * 0.82, label, { size: size, f: 'ag', w: 800, fill: ink });
-  s += arrowGlyph(x + txtW + size * 0.42, y + size * 0.52, size * 0.85, u * 0.0075, accent);
-  s += '<rect x="' + x + '" y="' + (y + size * 1.12) + '" width="' + (txtW + size * 1.4)
+  s += '<rect x="' + x + '" y="' + (y + size * 1.12) + '" width="' + txtW
     + '" height="' + (u * 0.011) + '" fill="' + accent + '"/>';
   var h = size * 1.12 + u * 0.011;
   if (url) {
     s += T(x, y + h + u * 0.052, url, { size: u * 0.030, fill: ink, w: 700 });
     h += u * 0.070;
   }
-  return { svg: s, h: h, w: txtW + size * 1.4 };
+  return { svg: s, h: h, w: txtW };
 }
 
 /** Une seule ligne d'informations, séparée par des points médians :
@@ -1065,9 +1076,9 @@ function price(txt, fallback){ return OPT.price ? txt : fallback; }
 /* Actions réelles de l'association, reprises telles quelles dans le gabarit
    « moderne ». On ne liste que des projets qui existent. */
 var ACTIONS_DEFAUT = [
-  ['diplome',   "Santé Nutrition Sport",   "Former nos jeunes à un esprit sain dans un corps sain"],
-  ['coeur',     "La Caravane de l'unité",  "Paix, respect et solidarité, à la rencontre des habitants"],
-  ['personnes', "Vie communautaire",       "Afterworks, sorties, moments conviviaux entre adhérents"]
+  ['fusee',     "Des projets ambitieux",   "Des projets à fort impact local"],
+  ['personnes', "Une communauté soudée",   "Rencontre des jeunes engagés et ambitieux"],
+  ['coeur',     "S'amuser entre jeunes",   "Des sorties et activités chaque mois"]
 ];
 /* Pictogrammes attribués par position : l'utilisateur saisit du texte, pas
    des icônes. Au-delà de quatre lignes on boucle sur la même série. */
@@ -1104,7 +1115,7 @@ var VALEURS_BADGES = [
 /* Les trois bénéfices, avec leur pictogramme et leur couleur. */
 var BENEFICES = [
   ['personnes', C.blue,   'Construis-toi',      'en tant que personne'],
-  ['ampoule',   C.yellow, 'Mène des actions',   "qui ont vraiment du sens"],
+  ['ampoule',   C.yellow, 'Mène des actions',   "à fort impact social"],
   ['trophee',   C.red,    'Monte en compétences', 'avec nous']
 ];
 
@@ -1121,12 +1132,12 @@ function V(variant){
       t: ["MJ'ADHÉSION"],
       season: season,
       big: ["MJ'", "ADHÉ", "SION"],
-      sub: ["Rejoins une équipe qui agit pour de vrai,", "près de chez toi."],
-      subShort: ["Une équipe", "qui agit pour de vrai."],
-      pills: ["16 – 35 ans", "Des actions qui ont du sens", "Une équipe qui compte sur toi"],
+      sub: ["Madin' Jeunes Ambition", "relève tous les défis !"],
+      subShort: ["Madin' Jeunes Ambition", "relève tous les défis !"],
+      pills: ["16 – 35 ans", "Un impact social", "Une équipe qui compte sur toi"],
       cta: "J'ADHÈRE EN LIGNE", ctaShort: "J'ADHÈRE",
       checks: ["Construis-toi en tant que personne",
-               "Mène des actions qui ont vraiment du sens",
+               "Mène des actions à fort impact social",
                "Monte en compétences avec nous"]
     },
     readhesion: {
@@ -1154,7 +1165,7 @@ function V(variant){
       big: ["POUR", "QUOI", "ADHÉRER"],
       items: [
         ["TE CONSTRUIRE", "Grandis, prends confiance, révèle ce que tu sais faire."],
-        ["T'ENGAGER", "Mène des actions qui ont vraiment du sens, près de chez toi."],
+        ["T'ENGAGER", "Mène des actions à fort impact social."],
         ["MONTER EN COMPÉTENCES", "Projets, événements, communication : tu apprends en faisant."],
         ["COMPTER", "Une voix à l'assemblée générale et dans nos décisions."]
       ],
@@ -1201,7 +1212,7 @@ function V(variant){
       pills: ["16 – 35 ans", "Pour les jeunes, par des jeunes", "Des projets concrets"],
       cta: "INSCRIS-TOI !", ctaShort: "INSCRIS-TOI !",
       checks: ["Construis-toi en tant que personne",
-               "Mène des actions qui ont vraiment du sens",
+               "Mène des actions à fort impact social",
                "Monte en compétences avec nous"]
     },
     benevole: {
@@ -1215,12 +1226,11 @@ function V(variant){
                   "Tu choisis les actions que tu portes",
                   "Une équipe qui t'accompagne"],
       signature: ["Madin' Jeunes Ambition", "Pour les jeunes, par des jeunes"],
-      actions: ["Prévention pour la non violence",
-                "Prévention sécurité routière et addictions",
-                "Engagement et valorisation de l'image des jeunes",
+      actions: ["Prévention",
                 "Solidarité",
-                "Loisirs, détentes, développement personnel…"],
-      sub: ["Nos actions : prévention, solidarité, engagement,", "loisirs et développement personnel."],
+                "Engagement citoyen",
+                "Loisirs et développement personnel"],
+      sub: ["Nos actions : prévention, solidarité,", "engagement et développement personnel."],
       subShort: ["Venez comme", "vous êtes !"],
       pills: ["16 – 35 ans", "Toutes les envies", "Venez comme vous êtes"],
       cta: "JE DEVIENS BÉNÉVOLE", ctaShort: "JE M'ENGAGE",
@@ -1256,7 +1266,7 @@ function V(variant){
       slogan: "Relève tous les défis !",
       signature: ["Madin' Jeunes Ambition", "Relève tous les défis !"],
       para: ["Construis-toi en tant que personne.",
-             "Engage-toi pour des actions qui ont du sens.",
+             "Engage-toi pour des actions à fort impact social.",
              "Monte en compétences avec nous.",
              "Pour les jeunes, par des jeunes."],
       sub: ["Une équipe, des projets,", "et une place qui t'attend."],
@@ -1264,7 +1274,7 @@ function V(variant){
       pills: ["Se construire", "S'engager", "Progresser"],
       cta: "JE REJOINS MJA", ctaShort: "JE REJOINS",
       checks: ["Construis-toi en tant que personne",
-               "Mène des actions qui ont vraiment du sens",
+               "Mène des actions à fort impact social",
                "Monte en compétences avec nous"],
       items: [
         ["SE CONSTRUIRE", "Gagne en confiance et en autonomie."],
@@ -1301,6 +1311,7 @@ function footerBlock(M, W, y, p, size){
   /* Pas de SITE ici : le bandeau d'appel à l'action le porte déjà, et le
      répéter à trois centimètres n'apporte rien. */
   return instaTag(M, y, size, p.foot)
+    + T(M, y + size * 1.18, 'Tél. ' + TEL, { size: size * 0.78, fill: p.foot, w: 700 })
     + T(W - M, y, CRI.join(' '), { size: size, fill: p.accent, anchor: 'end', w: 700 });
 }
 
@@ -1927,9 +1938,8 @@ function renderModerne(style, variant, uid, embed, W, H){
     s += '<rect x="' + (dX + droite * 0.075) + '" y="' + btY + '" width="' + (droite * 0.85) + '" height="' + btH + '" rx="' + (btH / 2) + '" fill="' + C.navy + '"/>';
     var bl = v.ctaShort || v.cta, bls = Math.min(btH * 0.42, droite * 0.085);
     bls = fitSize(bl, droite * 0.55, bls, 800, FAM_AG);
-    s += T(dX + droite * 0.075 + droite * 0.42 - btH * 0.30, btY + btH * 0.64, bl,
+    s += T(dX + droite * 0.075 + droite * 0.425, btY + btH * 0.64, bl,
            { size: bls, f: 'ag', w: 800, fill: '#FFFFFF', anchor: 'middle' });
-    s += picto('fleche', dX + droite * 0.075 + droite * 0.72, btY + btH * 0.30, btH * 0.42, '#FFFFFF');
     /* Pas de lien sous le bouton : le pied de page l'affiche déjà, en jaune
        et accompagné du QR code. */
   }
@@ -1954,7 +1964,7 @@ function renderModerne(style, variant, uid, embed, W, H){
 
   var cX = fx + Math.max(lw, W * 0.20) + W * 0.035, cW = W - cX - M;
   if (cW > W * 0.18) {
-    var contacts = [['telephone', 'Tel. ' + TEL], ['enveloppe', MAIL], ['insta', INSTA]];
+    var contacts = [['telephone', 'Tel. ' + TEL], ['enveloppe', MAIL], ['insta', INSTA + ' · Facebook ' + FACEBOOK]];
     for (var q = 0; q < contacts.length; q++) {
       var qy2 = fY + footH * (0.30 + q * 0.22);
       s += pastillePicto(cX + fs * 0.9, qy2 - fs * 0.30, fs * 0.86, contacts[q][0], C.yellow, C.navy);
@@ -2310,15 +2320,13 @@ function renderMosaic(style, variant, uid, embed, W, H){
   var ss = fitSize(slogan, W * 0.80, H * 0.115, 700, FAM_GS);
   s += T(W / 2, cTop + H * 0.235, slogan, { size: ss, fill: C.blue, anchor: 'middle', it: true, w: 700 });
 
-  /* « INSCRIS-TOI ! » + flèche + QR */
+  /* « INSCRIS-TOI ! » + QR : le QR est autonome, sans flèche décorative. */
   var isz = H * 0.040, ibase = cTop + H * 0.325;
   s += T(M, ibase, 'INSCRIS-TOI !', { size: isz, fill: C.bordeaux, w: 800, ls: isz * 0.02 });
   var qs = H * 0.175, qy = cTop + H * 0.345, avecQr = OPT.qr && ASSETS.qr;
   if (avecQr) {
     s += '<image x="' + M + '" y="' + qy + '" width="' + qs + '" height="' + qs
       + '" href="' + ASSETS.qr + '" xlink:href="' + ASSETS.qr + '"/>';
-    var tx = M + measure('INSCRIS-TOI !', isz, 800, FAM_GS);
-    s += curvedArrow(tx + W * 0.025, ibase - isz * 0.30, M + qs * 0.92, qy + qs * 0.10, H * 0.007, '#1A1A1A');
   } else {
     s += T(M, qy + qs * 0.3, OPT.url.replace(/^https?:\/\//, ''), { size: H * 0.026, fill: C.dark, w: 700 });
   }
@@ -3231,6 +3239,19 @@ if (champActions) {
   champActions.value = actionsEnTexte(ACTIONS_DEFAUT);
   champActions.addEventListener('input', function(){
     ACTIONS = lireActions(this.value);
+    refreshArt();
+  });
+}
+var champTextes = document.getElementById('opt-textes');
+if (champTextes) {
+  champTextes.addEventListener('input', function(){
+    TEXTES_LIBRES = {};
+    String(this.value).split(String.fromCharCode(10)).forEach(function(ligne){
+      var morceaux = ligne.split('|');
+      var avant = (morceaux.shift() || '').trim();
+      var apres = morceaux.join('|').trim();
+      if (avant && apres) TEXTES_LIBRES[avant] = apres;
+    });
     refreshArt();
   });
 }
