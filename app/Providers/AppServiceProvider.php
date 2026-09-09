@@ -30,20 +30,22 @@ class AppServiceProvider extends ServiceProvider
          * par IP et une fenêtre journalière par e-mail. L'e-mail est haché
          * pour ne jamais apparaître en clair dans la clé de cache.
          */
-        RateLimiter::for('adhesion', static function (Request $request): array {
-            $ip = $request->ip() ?? 'inconnue';
-            $email = Str::lower(trim((string) $request->input('email')));
+        foreach (['adhesion', 'contact'] as $formulaire) {
+            RateLimiter::for($formulaire, static function (Request $request) use ($formulaire): array {
+                $ip = $request->ip() ?? 'inconnue';
+                $email = Str::lower(trim((string) $request->input('email')));
 
-            $limites = [
-                Limit::perMinutes(10, 3)->by('adhesion:ip:10min:' . $ip),
-                Limit::perDay(12)->by('adhesion:ip:jour:' . $ip),
-            ];
+                $limites = [
+                    Limit::perMinutes(10, 3)->by("{$formulaire}:ip:10min:{$ip}"),
+                    Limit::perDay(12)->by("{$formulaire}:ip:jour:{$ip}"),
+                ];
 
-            if ($email !== '') {
-                $limites[] = Limit::perDay(2)->by('adhesion:email:jour:' . hash('sha256', $email));
-            }
+                if ($email !== '') {
+                    $limites[] = Limit::perDay(2)->by("{$formulaire}:email:jour:" . hash('sha256', $email));
+                }
 
-            return $limites;
-        });
+                return $limites;
+            });
+        }
     }
 }

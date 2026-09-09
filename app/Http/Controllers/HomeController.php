@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ContactRequest;
 use App\Mail\ContactConfirmation;
 use App\Mail\ContactNotification;
 use App\Models\Article;
@@ -101,30 +102,17 @@ class HomeController extends Controller
         return view('legal.confidentialite');
     }
 
-    public function contact()
+    public function contact(Request $request)
     {
+        $request->session()->put('contact_form_started_at', now()->getTimestamp());
+
         return view('contact');
     }
 
-    public function contactStore(Request $request)
+    public function contactStore(ContactRequest $request)
     {
-        $validated = $request->validate([
-            'nom' => 'required|string|max:100',
-            'email' => 'required|email',
-            'indicatif' => 'nullable|string|max:6',
-            'telephone' => 'nullable|string|max:30',
-            'sujet' => 'required|string|max:150',
-            'message' => 'required|string|min:10',
-        ], [
-            'nom.required' => 'Le nom est obligatoire.',
-            'nom.max' => 'Le nom ne doit pas dépasser 100 caractères.',
-            'email.required' => 'L\'adresse email est obligatoire.',
-            'email.email' => 'L\'adresse email n\'est pas valide.',
-            'sujet.required' => 'Le sujet est obligatoire.',
-            'sujet.max' => 'Le sujet ne doit pas dépasser 150 caractères.',
-            'message.required' => 'Le message est obligatoire.',
-            'message.min' => 'Le message doit contenir au moins 10 caractères.',
-        ]);
+        $validated = $request->validated();
+        unset($validated['cf-turnstile-response']);
 
         $indicatif = $validated['indicatif'] ?? null;
         unset($validated['indicatif']);

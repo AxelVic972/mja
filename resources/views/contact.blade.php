@@ -3,6 +3,12 @@
 @section('og_image', asset('images/partage/contact.jpg'))
 @section('meta_description', "Contactez Madin'Jeunes Ambition — association de jeunes bénévoles en Martinique et au-delà. Pour toute question, partenariat ou information sur nos programmes.")
 
+@if(config('services.turnstile.enabled'))
+@push('head')
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+@endpush
+@endif
+
 @section('content')
 
 <section class="hero-gradient text-white py-16 relative overflow-hidden">
@@ -122,6 +128,13 @@
                     </div>
                     @endif
 
+                    @error('formulaire')
+                    <div class="bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 mb-6 flex items-start gap-3 font-display font-semibold text-sm">
+                        <i class="fas fa-exclamation-circle text-mja-red mt-0.5"></i>
+                        <span>{{ $message }}</span>
+                    </div>
+                    @enderror
+
                     <form method="POST" action="{{ route('contact.store') }}" class="space-y-5">
                         @csrf
                         <div aria-hidden="true" style="position:absolute;left:-9999px;height:0;overflow:hidden" tabindex="-1">
@@ -163,6 +176,12 @@
                                 placeholder="Votre message...">{{ old('message') }}</textarea>
                             @error('message')<p class="text-mja-red text-xs mt-1 font-display font-semibold">{{ $message }}</p>@enderror
                         </div>
+                        @if(config('services.turnstile.enabled'))
+                        <div>
+                            <div class="cf-turnstile" data-sitekey="{{ config('services.turnstile.site_key') }}" data-theme="light"></div>
+                            @error('cf-turnstile-response')<p class="text-mja-red text-xs mt-1 font-display font-semibold">{{ $message }}</p>@enderror
+                        </div>
+                        @endif
                         <button type="submit"
                             class="w-full btn-blue font-display font-bold py-3.5 rounded-xl transition-colors flex items-center justify-center gap-2">
                             <i class="fas fa-paper-plane"></i> Envoyer le message

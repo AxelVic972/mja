@@ -23,7 +23,7 @@ Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 Route::get('/a-propos', [HomeController::class, 'about'])->name('about');
 Route::get('/contact', [HomeController::class, 'contact'])->name('contact');
-Route::post('/contact', [HomeController::class, 'contactStore'])->name('contact.store')->middleware(['honeypot', 'throttle:5,1']);
+Route::post('/contact', [HomeController::class, 'contactStore'])->name('contact.store')->middleware(['honeypot', 'throttle:contact']);
 
 Route::get('/actualites', [ArticleController::class, 'index'])->name('articles.index');
 Route::get('/actualites/{article:slug}', [ArticleController::class, 'show'])->name('articles.show');
