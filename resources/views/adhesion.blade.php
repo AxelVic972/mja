@@ -10,6 +10,12 @@
 @endpush
 @endif
 
+@if(config('services.turnstile.enabled'))
+@push('head')
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+@endpush
+@endif
+
 @section('content')
 
 @php
@@ -215,6 +221,12 @@
                         <div aria-hidden="true" style="position:absolute;left:-9999px;height:0;overflow:hidden" tabindex="-1">
                             <label>Ne pas remplir<input type="text" name="site_web" tabindex="-1" autocomplete="off"></label>
                         </div>
+                        @if(config('services.turnstile.enabled'))
+                        <div>
+                            <div class="cf-turnstile" data-sitekey="{{ config('services.turnstile.site_key') }}" data-theme="light"></div>
+                            @error('cf-turnstile-response')<p class="text-mja-red text-xs mt-1.5 font-display font-semibold">{{ $message }}</p>@enderror
+                        </div>
+                        @endif
                         @if(!empty($precedente?->renouvellement_token))
                         <input type="hidden" name="renouvellement_token" value="{{ $precedente->renouvellement_token }}">
                         @endif

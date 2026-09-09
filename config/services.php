@@ -35,4 +35,14 @@ return [
         ],
     ],
 
+    /*
+     * Protection anti-robots du formulaire d'adhésion. Elle devient active
+     * uniquement lorsque les deux clés sont renseignées dans l'environnement.
+     */
+    'turnstile' => [
+        'site_key'   => env('TURNSTILE_SITE_KEY'),
+        'secret_key' => env('TURNSTILE_SECRET_KEY'),
+        'enabled'    => filled(env('TURNSTILE_SITE_KEY')) && filled(env('TURNSTILE_SECRET_KEY')),
+    ],
+
 ];

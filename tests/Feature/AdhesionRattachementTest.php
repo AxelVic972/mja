@@ -20,6 +20,14 @@ class AdhesionRattachementTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Le formulaire public a été affiché il y a plus de trois secondes.
+        $this->withSession(['adhesion_form_started_at' => now()->subSeconds(4)->getTimestamp()]);
+    }
+
     private function formulaire(array $remplace = []): array
     {
         return array_merge([
@@ -40,6 +48,24 @@ class AdhesionRattachementTest extends TestCase
             'droit_image'       => '1',
             'rgpd_consentement' => '1',
         ], $remplace);
+    }
+
+    public function test_un_envoi_direct_sans_affichage_du_formulaire_est_refuse(): void
+    {
+        Mail::fake();
+
+        $this->withSession([])
+            ->post('/adhesion', $this->formulaire())
+            ->assertSessionHasErrors('formulaire');
+
+        $this->assertSame(0, Adhesion::count());
+    }
+
+    public function test_l_affichage_du_formulaire_demarre_la_protection_temporelle(): void
+    {
+        $this->get('/adhesion')
+            ->assertOk()
+            ->assertSessionHas('adhesion_form_started_at');
     }
 
     public function test_adhesion_rattachee_au_compte_existant_par_email(): void

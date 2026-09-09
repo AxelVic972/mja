@@ -3,8 +3,10 @@
 namespace App\Http\Requests;
 
 use App\Models\Adhesion;
+use App\Rules\Turnstile;
 use App\Support\Telephone;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 /**
  * Règles communes au formulaire d'adhésion et à l'écran de renouvellement :
@@ -57,6 +59,10 @@ class AdhesionRequest extends FormRequest
             'rgpd_consentement' => 'required|accepted',
         ];
 
+        if (config('services.turnstile.enabled')) {
+            $regles['cf-turnstile-response'] = ['bail', 'required', 'string', new Turnstile($this->ip())];
+        }
+
         if ($this->priseDInformations()) {
             return $regles;
         }
@@ -108,6 +114,29 @@ class AdhesionRequest extends FormRequest
             'rgpd_consentement.required'     => 'Le consentement au traitement de vos données est obligatoire.',
             'rgpd_consentement.accepted'     => 'Vous devez consentir au traitement de vos données pour finaliser votre adhésion.',
         ];
+    }
+
+    /**
+     * Un robot qui publie directement sur l'URL ne possède pas l'horodatage
+     * enregistré quand la page a été affichée. Trois secondes restent
+     * imperceptibles pour une personne, mais arrêtent les envois immédiats.
+     */
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            $debut = $this->session()->get('adhesion_form_started_at');
+            $delaiMinimum = (int) config('mja.adhesion_min_fill_seconds', 3);
+
+            if (! is_numeric($debut) || now()->getTimestamp() - (int) $debut < $delaiMinimum) {
+                $validator->errors()->add('formulaire', 'Veuillez prendre un instant pour vérifier le formulaire avant de l’envoyer.');
+            }
+        });
+    }
+
+    /** Le jeton temporel ne doit pas pouvoir servir à rejouer un envoi valide. */
+    protected function passedValidation(): void
+    {
+        $this->session()->forget('adhesion_form_started_at');
     }
 
     /**

@@ -39,7 +39,7 @@ Route::get('/ressources', [ResourceController::class, 'index'])->name('resources
 Route::get('/sante-nutrition-sport', [HomeController::class, 'sns'])->name('sns');
 
 Route::get('/adhesion', [AdhesionController::class, 'create'])->name('adhesion');
-Route::post('/adhesion', [AdhesionController::class, 'store'])->name('adhesion.store')->middleware(['honeypot', 'throttle:5,1']);
+Route::post('/adhesion', [AdhesionController::class, 'store'])->name('adhesion.store')->middleware(['honeypot', 'throttle:adhesion']);
 // Renouvellement : depuis l'espace adhérent, ou via le lien magique des emails
 // de relance (pour ceux qui n'ont jamais créé de compte).
 Route::get('/adhesion/renouveler/{token}', [AdhesionController::class, 'renouvelerParLien'])->name('adhesion.renouveler');

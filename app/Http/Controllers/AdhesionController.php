@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\Password;
 
 class AdhesionController extends Controller
 {
-    public function create()
+    public function create(Request $request)
     {
         // Un adhérent connecté n'a rien à ressaisir : on l'envoie directement
         // sur son écran de renouvellement pré-rempli.
@@ -32,14 +32,14 @@ class AdhesionController extends Controller
             return redirect()->route('adhesion.renouveler.espace');
         }
 
-        return view('adhesion', $this->donneesVue());
+        return $this->afficherFormulaire($request);
     }
 
     /**
      * Renouvellement depuis l'espace adhérent : le formulaire est pré-rempli
      * avec la dernière adhésion, il n'y a plus qu'à vérifier et payer.
      */
-    public function renouvelerDepuisEspace()
+    public function renouvelerDepuisEspace(Request $request)
     {
         $user = Auth::user();
         $precedente = $user?->adhesion;
@@ -52,14 +52,14 @@ class AdhesionController extends Controller
                 ->with('error', "Aucune adhésion n'est rattachée à votre compte : remplissez le formulaire ci-dessous.");
         }
 
-        return view('adhesion', $this->donneesVue($precedente));
+        return $this->afficherFormulaire($request, $precedente);
     }
 
     /**
      * Renouvellement par lien magique reçu par email : même écran, sans
      * connexion — pour les adhérents qui n'ont jamais créé de compte.
      */
-    public function renouvelerParLien(string $token)
+    public function renouvelerParLien(Request $request, string $token)
     {
         $precedente = Adhesion::where('renouvellement_token', $token)->first();
 
@@ -69,6 +69,18 @@ class AdhesionController extends Controller
             return redirect()->route('adhesion')
                 ->with('error', "Ce lien de renouvellement a expiré. Remplissez le formulaire ci-dessous, ou connectez-vous à votre espace adhérent.");
         }
+
+        return $this->afficherFormulaire($request, $precedente);
+    }
+
+    /**
+     * Enregistre côté serveur l'instant auquel le formulaire a été affiché.
+     * Il sert à écarter les soumissions automatiques immédiates, sans ajouter
+     * de donnée visible ou manipulable par le visiteur.
+     */
+    private function afficherFormulaire(Request $request, ?Adhesion $precedente = null)
+    {
+        $request->session()->put('adhesion_form_started_at', now()->getTimestamp());
 
         return view('adhesion', $this->donneesVue($precedente));
     }

@@ -15,6 +15,9 @@ return [
     */
     'show_sns' => env('MJA_SHOW_SNS', false),
 
+    // Temps minimal entre l'affichage et l'envoi du formulaire d'adhésion.
+    'adhesion_min_fill_seconds' => env('MJA_ADHESION_MIN_FILL_SECONDS', 3),
+
     /*
     |--------------------------------------------------------------------------
     | Adresse de contact publique
