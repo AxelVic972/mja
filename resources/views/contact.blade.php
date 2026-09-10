@@ -122,11 +122,16 @@
                     </div>
                     @endif
 
+                    @error('antispam')
+                    <div class="bg-red-50 border border-red-200 text-red-800 rounded-xl p-4 mb-6 flex items-start gap-3 font-display font-semibold text-sm">
+                        <i class="fas fa-triangle-exclamation text-mja-red mt-0.5"></i>
+                        <span>{{ $message }}</span>
+                    </div>
+                    @enderror
+
                     <form method="POST" action="{{ route('contact.store') }}" class="space-y-5">
                         @csrf
-                        <div aria-hidden="true" style="position:absolute;left:-9999px;height:0;overflow:hidden" tabindex="-1">
-                            <label>Ne pas remplir<input type="text" name="site_web" tabindex="-1" autocomplete="off"></label>
-                        </div>
+                        <x-form-guard />
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
                             <div>
                                 <label for="c-nom" class="block text-sm font-display font-bold text-mja-gray mb-1.5">Nom complet <span class="text-mja-red" aria-hidden="true">*</span></label>

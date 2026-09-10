@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Middleware\AntiSpam;
 use App\Mail\ContactConfirmation;
 use App\Mail\ContactNotification;
 use App\Models\Article;
@@ -135,6 +136,11 @@ class HomeController extends Controller
         $validated['source_id'] = $request->session()->get('mja_source_id');
 
         $contact = Contact::create($validated);
+
+        // Empreinte posée seulement maintenant : une campagne qui rejoue le
+        // même message depuis d'autres adresses IP sera refusée d'emblée,
+        // sans pénaliser le visiteur dont la saisie vient d'être refusée.
+        AntiSpam::memoriser($contact->email, $contact->message);
 
         try {
             Mail::to($contact->email)->send(new ContactConfirmation($contact));
