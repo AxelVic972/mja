@@ -18,9 +18,6 @@ return [
     // Temps minimal entre l'affichage et l'envoi du formulaire d'adhésion.
     'adhesion_min_fill_seconds' => env('MJA_ADHESION_MIN_FILL_SECONDS', 3),
 
-    // Même protection temporelle pour les messages envoyés via la page contact.
-    'contact_min_fill_seconds' => env('MJA_CONTACT_MIN_FILL_SECONDS', 3),
-
     /*
     |--------------------------------------------------------------------------
     | Adresse de contact publique

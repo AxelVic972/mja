@@ -2,11 +2,9 @@
 
 namespace App\Http\Requests;
 
-use App\Rules\Turnstile;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Validator;
 
-/** Validation et protections dédiées au formulaire de contact public. */
+/** Validation des données du formulaire de contact public. */
 class ContactRequest extends FormRequest
 {
     public function authorize(): bool
@@ -25,10 +23,6 @@ class ContactRequest extends FormRequest
             'message'   => 'required|string|min:10',
         ];
 
-        if (config('services.turnstile.enabled')) {
-            $regles['cf-turnstile-response'] = ['bail', 'required', 'string', new Turnstile($this->ip())];
-        }
-
         return $regles;
     }
 
@@ -44,22 +38,5 @@ class ContactRequest extends FormRequest
             'message.required' => 'Le message est obligatoire.',
             'message.min'      => 'Le message doit contenir au moins 10 caractères.',
         ];
-    }
-
-    public function withValidator(Validator $validator): void
-    {
-        $validator->after(function (Validator $validator): void {
-            $debut = $this->session()->get('contact_form_started_at');
-            $delaiMinimum = (int) config('mja.contact_min_fill_seconds', 3);
-
-            if (! is_numeric($debut) || now()->getTimestamp() - (int) $debut < $delaiMinimum) {
-                $validator->errors()->add('formulaire', 'Veuillez prendre un instant pour vérifier le formulaire avant de l’envoyer.');
-            }
-        });
-    }
-
-    protected function passedValidation(): void
-    {
-        $this->session()->forget('contact_form_started_at');
     }
 }
