@@ -24,7 +24,7 @@ return new class extends Migration
             $table->text('problemes_sante')->nullable();
             $table->string('urgence_contact', 300);
             $table->boolean('droit_image')->default(false);
-            $table->string('statut', 30)->default('nouvelle');
+            $table->string('statut', 30)->default('en_attente_paiement');
             $table->boolean('lu')->default(false);
             $table->timestamps();
         });

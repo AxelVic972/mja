@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Mail\AdhesionStatusUpdate;
 use App\Models\Adhesion;
+use App\Models\AdhesionPeriod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -16,45 +17,37 @@ class AdhesionController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Adhesion::with('period')->orderByDesc('created_at');
-        if ($request->input('period') === 'aucune') {
-            $query->whereNull('period_id');
-        } elseif ($request->filled('period')) {
-            $query->where('period_id', $request->integer('period'));
-        }
+        $periods = AdhesionPeriod::orderByDesc('date_debut')->get();
+        $periodeSelectionnee = null;
+        $query = $this->adhesionsPourPeriode($request, $periodeSelectionnee);
         $adhesions = $query->paginate(20)->withQueryString();
 
+        $statistiques = clone $query;
         $stats = [
-            'total'     => Adhesion::count(),
-            'nouvelles' => Adhesion::where('statut', 'nouvelle')->count(),
-            'adherents' => Adhesion::where('statut', 'payee')->count(),
+            'total'                => (clone $statistiques)->count(),
+            'en_attente_paiement' => (clone $statistiques)->where('statut', 'en_attente_paiement')->count(),
+            'adherents'            => (clone $statistiques)->where('statut', 'payee')->count(),
         ];
-        $periods = \App\Models\AdhesionPeriod::orderByDesc('date_debut')->get();
 
         // Adhésions rattachées à aucune saison : elles échappent aux filtres,
         // aux exports par période et aux relances de renouvellement.
         $sansPeriode = Adhesion::whereNull('period_id')->count();
 
-        return view('admin.adhesions.index', compact('adhesions', 'stats', 'periods', 'sansPeriode'));
+        return view('admin.adhesions.index', compact('adhesions', 'stats', 'periods', 'sansPeriode', 'periodeSelectionnee'));
     }
 
     public function export(Request $request): StreamedResponse
     {
-        $query = Adhesion::with('period')->orderByDesc('created_at');
-        if ($request->input('period') === 'aucune') {
-            $query->whereNull('period_id');
-        } elseif ($request->filled('period')) {
-            $query->where('period_id', $request->integer('period'));
-        }
-        $adhesions = $query->get();
+        $periodeSelectionnee = null;
+        $adhesions = $this->adhesionsPourPeriode($request, $periodeSelectionnee)->get();
 
         return response()->streamDownload(function () use ($adhesions) {
             $out = fopen('php://output', 'w');
             fprintf($out, "\xEF\xBB\xBF"); // BOM UTF-8 (Excel)
             fputcsv($out, [
                 'Reçue le', 'Statut', 'Type', 'Civilité', 'Nom', 'Prénom', 'Date naissance',
-                'Profession', 'Téléphone', 'Email', 'T-shirt', 'Permis',
-                'Problèmes santé', 'Contact urgence', 'Moyen paiement', 'Période',
+                'Profession', 'Téléphone', 'Email', 'Adresse postale', 'T-shirt', 'Permis',
+                'Problèmes santé', 'Contact urgence', 'Moyen paiement', 'Commentaire', 'Période',
             ], ';');
             foreach ($adhesions as $a) {
                 fputcsv($out, [
@@ -74,6 +67,7 @@ class AdhesionController extends Controller
                     str_replace(["\r", "\n"], ' ', (string) $a->problemes_sante),
                     $a->urgence_contact,
                     $a->label_moyen_paiement,
+                    str_replace(["\r", "\n"], ' ', (string) $a->commentaire),
                     $a->period?->label,
                 ], ';');
             }
@@ -84,9 +78,71 @@ class AdhesionController extends Controller
     public function show(Adhesion $adhesion)
     {
         $adhesion->update(['lu' => true]);
-        $periods = \App\Models\AdhesionPeriod::orderByDesc('date_debut')->get();
+        $periods = AdhesionPeriod::orderByDesc('date_debut')->get();
 
         return view('admin.adhesions.show', compact('adhesion', 'periods'));
+    }
+
+    public function create()
+    {
+        $periods = AdhesionPeriod::orderByDesc('date_debut')->get();
+        $adhesion = new Adhesion([
+            'premiere_adhesion' => 'premiere',
+            'statut' => 'en_attente_paiement',
+            'period_id' => AdhesionPeriod::pourAdhesion()?->id,
+        ]);
+
+        return view('admin.adhesions.create', compact('adhesion', 'periods'));
+    }
+
+    public function store(Request $request)
+    {
+        $donnees = $this->donneesAdhesionAdmin($request);
+        $donnees['lu'] = true;
+        $donnees['rgpd_consentement'] = true;
+
+        if ($request->hasFile('photo')) {
+            $donnees['photo'] = $request->file('photo')->store('adhesions/photos', 'public');
+        }
+
+        $adhesion = Adhesion::create($donnees);
+        if ($adhesion->statut === 'payee') {
+            $adhesion->ensureAccountToken();
+        }
+
+        return redirect()->route('admin.adhesions.show', $adhesion)
+            ->with('success', 'Adhésion ajoutée manuellement.');
+    }
+
+    public function edit(Adhesion $adhesion)
+    {
+        $periods = AdhesionPeriod::orderByDesc('date_debut')->get();
+
+        return view('admin.adhesions.edit', compact('adhesion', 'periods'));
+    }
+
+    public function update(Request $request, Adhesion $adhesion)
+    {
+        $donnees = $this->donneesAdhesionAdmin($request);
+
+        if ($request->hasFile('photo')) {
+            $nouvellePhoto = $request->file('photo')->store('adhesions/photos', 'public');
+            if ($adhesion->photo) {
+                Storage::disk('public')->delete($adhesion->photo);
+            }
+            $donnees['photo'] = $nouvellePhoto;
+        } elseif ($request->boolean('remove_photo') && $adhesion->photo) {
+            Storage::disk('public')->delete($adhesion->photo);
+            $donnees['photo'] = null;
+        }
+
+        $adhesion->update($donnees);
+        if ($adhesion->statut === 'payee') {
+            $adhesion->ensureAccountToken();
+        }
+
+        return redirect()->route('admin.adhesions.show', $adhesion)
+            ->with('success', 'Adhésion mise à jour.');
     }
 
     public function updateStatut(Request $request, Adhesion $adhesion)
@@ -174,7 +230,7 @@ class AdhesionController extends Controller
             ]
         );
 
-        $periode = \App\Models\AdhesionPeriod::findOrFail($validated['period_id']);
+        $periode = AdhesionPeriod::findOrFail($validated['period_id']);
         $nombre = Adhesion::whereNull('period_id')->update(['period_id' => $periode->id]);
 
         return back()->with('success', $nombre === 0
@@ -189,5 +245,59 @@ class AdhesionController extends Controller
         }
         $adhesion->delete();
         return redirect()->route('admin.adhesions.index')->with('success', 'Demande supprimée.');
+    }
+
+    /** Applique le filtre de saison choisi dans la liste et dans l'export. */
+    private function adhesionsPourPeriode(Request $request, ?AdhesionPeriod &$periodeSelectionnee)
+    {
+        $query = Adhesion::with('period')->orderByDesc('created_at');
+        $filtre = $request->input('period');
+
+        if ($filtre === 'aucune') {
+            return $query->whereNull('period_id');
+        }
+
+        if ($filtre === 'toutes') {
+            return $query;
+        }
+
+        if ($request->filled('period')) {
+            return $query->where('period_id', $request->integer('period'));
+        }
+
+        // La liste ne mélange pas les campagnes : elle ouvre d'abord la
+        // saison à laquelle les nouvelles adhésions sont aujourd'hui rattachées.
+        $periodeSelectionnee = AdhesionPeriod::pourAdhesion();
+
+        return $periodeSelectionnee
+            ? $query->where('period_id', $periodeSelectionnee->id)
+            : $query;
+    }
+
+    /** Validation des données saisies depuis le back-office. */
+    private function donneesAdhesionAdmin(Request $request): array
+    {
+        $donnees = $request->validate([
+            'premiere_adhesion' => ['required', Rule::in(['premiere', 'readhesion', 'information'])],
+            'civilite'          => ['required', Rule::in(['Madame', 'Monsieur'])],
+            'nom'               => 'required|string|max:100',
+            'prenom'            => 'required|string|max:100',
+            'date_naissance'    => 'nullable|string|max:20',
+            'telephone'         => 'required|string|max:30',
+            'email'             => 'required|email|max:150',
+            'adresse_postale'   => 'nullable|string|max:500',
+            'moyen_paiement'    => ['nullable', Rule::in(['cheque', 'espece', 'virement', 'en_ligne', 'code_promo'])],
+            'statut'            => ['required', Rule::in(array_keys(Adhesion::STATUTS))],
+            'period_id'         => 'nullable|integer|exists:adhesion_periods,id',
+            'commentaire'       => 'nullable|string|max:2000',
+            'photo'             => 'nullable|image|max:5120',
+            'droit_image'       => 'nullable|boolean',
+            'remove_photo'      => 'nullable|boolean',
+        ]);
+
+        unset($donnees['photo'], $donnees['remove_photo']);
+        $donnees['droit_image'] = $request->boolean('droit_image');
+
+        return $donnees;
     }
 }

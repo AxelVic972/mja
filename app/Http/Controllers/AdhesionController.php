@@ -244,7 +244,7 @@ class AdhesionController extends Controller
         $donnees['statut'] = match (true) {
             $donnees['premiere_adhesion'] === 'information' => 'prise_infos',
             $cartePayee || $promoCode !== null               => 'payee',
-            default                                         => 'nouvelle',
+            default                                         => 'en_attente_paiement',
         };
 
         // La création et la consommation du code se font ensemble : si une

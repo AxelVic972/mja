@@ -139,7 +139,11 @@ Route::prefix('admin')->name('admin.')->middleware(['auth'])->group(function () 
 
         Route::get('adhesions', [Admin\AdhesionController::class, 'index'])->name('adhesions.index');
         Route::get('adhesions/export', [Admin\AdhesionController::class, 'export'])->name('adhesions.export');
+        Route::get('adhesions/create', [Admin\AdhesionController::class, 'create'])->name('adhesions.create');
+        Route::post('adhesions', [Admin\AdhesionController::class, 'store'])->name('adhesions.store');
         Route::get('adhesions/{adhesion}', [Admin\AdhesionController::class, 'show'])->name('adhesions.show');
+        Route::get('adhesions/{adhesion}/edit', [Admin\AdhesionController::class, 'edit'])->name('adhesions.edit');
+        Route::put('adhesions/{adhesion}', [Admin\AdhesionController::class, 'update'])->name('adhesions.update');
         Route::patch('adhesions/{adhesion}/statut', [Admin\AdhesionController::class, 'updateStatut'])->name('adhesions.statut');
         Route::get('adhesions/{adhesion}/carte', [Admin\AdhesionController::class, 'carte'])->name('adhesions.carte');
         Route::patch('adhesions/{adhesion}/periode', [Admin\AdhesionController::class, 'updatePeriode'])->name('adhesions.periode');

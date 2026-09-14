@@ -18,8 +18,8 @@
             <i class="fas fa-clock text-orange-400"></i>
         </div>
         <div>
-            <div class="text-2xl font-display font-black text-mja-gray">{{ $stats['nouvelles'] }}</div>
-            <div class="text-xs text-gray-400 font-semibold uppercase tracking-wider">Nouvelles</div>
+            <div class="text-2xl font-display font-black text-mja-gray">{{ $stats['en_attente_paiement'] }}</div>
+            <div class="text-xs text-gray-400 font-semibold uppercase tracking-wider">En attente de paiement</div>
         </div>
     </div>
     <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm flex items-center gap-4">
@@ -73,33 +73,44 @@
     <form method="GET" class="flex items-center gap-2">
         <label class="text-sm text-gray-500 font-display font-semibold">Période :</label>
         <select name="period" onchange="this.form.submit()" class="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-mja-blue">
-            <option value="">Toutes</option>
+            @if($periodeSelectionnee)
+            <option value="" @selected(!request()->has('period'))>{{ $periodeSelectionnee->label }} (par défaut)</option>
+            @endif
+            <option value="toutes" @selected(request('period') === 'toutes')>Toutes les saisons</option>
             @foreach($periods as $p)
-            <option value="{{ $p->id }}" @selected(request('period') !== 'aucune' && request('period') == $p->id)>{{ $p->label }}</option>
+            <option value="{{ $p->id }}" @selected(request()->has('period') && request('period') !== 'aucune' && request('period') == $p->id)>{{ $p->label }}</option>
             @endforeach
             @if($sansPeriode > 0)
             <option value="aucune" @selected(request('period') === 'aucune')>Sans saison ({{ $sansPeriode }})</option>
             @endif
         </select>
-        @if(request('period'))<a href="{{ route('admin.adhesions.index') }}" class="text-xs text-mja-blue hover:underline">Réinitialiser</a>@endif
+        @if(request()->has('period'))<a href="{{ route('admin.adhesions.index') }}" class="text-xs text-mja-blue hover:underline">Revenir à la saison par défaut</a>@endif
     </form>
     @else
     <span></span>
     @endif
-    <a href="{{ route('admin.adhesions.export', array_filter(['period' => request('period')])) }}"
-       class="inline-flex items-center gap-2 bg-mja-dark hover:bg-mja-navy text-white font-display font-bold text-sm px-4 py-2 rounded-xl transition-colors">
-        <i class="fas fa-file-csv"></i> Exporter en CSV
-    </a>
+    <div class="flex items-center gap-2">
+        <a href="{{ route('admin.adhesions.create') }}"
+           class="inline-flex items-center gap-2 bg-mja-blue hover:bg-mja-bluedark text-white font-display font-bold text-sm px-4 py-2 rounded-xl transition-colors">
+            <i class="fas fa-plus"></i> Ajouter une adhésion
+        </a>
+        <a href="{{ route('admin.adhesions.export', array_filter(['period' => request('period')])) }}"
+           class="inline-flex items-center gap-2 bg-mja-dark hover:bg-mja-navy text-white font-display font-bold text-sm px-4 py-2 rounded-xl transition-colors">
+            <i class="fas fa-file-csv"></i> Exporter en CSV
+        </a>
+    </div>
 </div>
 
 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
-    <table class="w-full text-sm min-w-[720px]">
+    <table class="w-full text-sm min-w-[1000px]">
         <thead class="bg-gray-50 text-gray-500 text-xs uppercase">
             <tr>
                 <th class="px-6 py-3 text-left font-semibold w-4"></th>
                 <th class="px-4 py-3 text-left font-semibold">Candidat</th>
                 <th class="px-4 py-3 text-left font-semibold">Type</th>
                 <th class="px-4 py-3 text-left font-semibold">Statut</th>
+                <th class="px-4 py-3 text-left font-semibold">Paiement</th>
+                <th class="px-4 py-3 text-left font-semibold">Commentaire</th>
                 <th class="px-4 py-3 text-left font-semibold">Période</th>
                 <th class="px-4 py-3 text-left font-semibold">Date</th>
                 <th class="px-4 py-3 text-center font-semibold">Actions</th>
@@ -129,6 +140,14 @@
                         {{ $adhesion->label_statut }}
                     </span>
                 </td>
+                <td class="px-4 py-4 text-xs text-gray-600 whitespace-nowrap">{{ $adhesion->label_moyen_paiement }}</td>
+                <td class="px-4 py-4 text-xs text-gray-500 max-w-48">
+                    @if($adhesion->commentaire)
+                    <span title="{{ $adhesion->commentaire }}" class="block truncate">{{ $adhesion->commentaire }}</span>
+                    @else
+                    <span class="text-gray-300">—</span>
+                    @endif
+                </td>
                 <td class="px-4 py-4">
                     @if($adhesion->period)
                     <span class="text-xs font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">{{ $adhesion->period->label }}</span>
@@ -141,6 +160,7 @@
                 <td class="px-4 py-4">
                     <div class="flex items-center justify-center gap-2">
                         <a href="{{ route('admin.adhesions.show', $adhesion) }}" class="w-8 h-8 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center"><i class="fas fa-eye text-xs"></i></a>
+                        <a href="{{ route('admin.adhesions.edit', $adhesion) }}" class="w-8 h-8 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-lg flex items-center justify-center"><i class="fas fa-pen text-xs"></i></a>
                         <form method="POST" action="{{ route('admin.adhesions.destroy', $adhesion) }}" data-confirm="Supprimer cette demande ?">
                             @csrf @method('DELETE')
                             <button class="w-8 h-8 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg flex items-center justify-center"><i class="fas fa-trash text-xs"></i></button>
@@ -149,7 +169,7 @@
                 </td>
             </tr>
             @empty
-            <tr><td colspan="7" class="px-6 py-12 text-center text-gray-400">Aucune demande d'adhésion reçue.</td></tr>
+            <tr><td colspan="9" class="px-6 py-12 text-center text-gray-400">Aucune demande d'adhésion reçue pour cette saison.</td></tr>
             @endforelse
         </tbody>
     </table>

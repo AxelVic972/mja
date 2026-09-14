@@ -131,6 +131,16 @@
                 </div>
             @endif
         </div>
+
+        {{-- Commentaire interne de suivi --}}
+        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Commentaire interne</div>
+            @if($adhesion->commentaire)
+                <div class="text-sm text-gray-700 whitespace-pre-wrap">{{ $adhesion->commentaire }}</div>
+            @else
+                <div class="text-sm text-gray-400 italic">Aucun commentaire.</div>
+            @endif
+        </div>
     </div>
 
     {{-- Colonne latérale : statut + actions --}}
@@ -193,6 +203,10 @@
         {{-- Actions --}}
         <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-3">
             <h3 class="font-display font-bold text-mja-gray mb-1">Actions</h3>
+            <a href="{{ route('admin.adhesions.edit', $adhesion) }}"
+                class="w-full bg-amber-50 hover:bg-amber-100 text-amber-700 font-semibold px-4 py-2.5 rounded-xl transition-colors text-sm flex items-center justify-center gap-2">
+                <i class="fas fa-pen"></i> Modifier l'adhésion
+            </a>
             @if($adhesion->isAdherent())
             <a href="{{ route('admin.adhesions.carte', $adhesion) }}" target="_blank" rel="noopener"
                 class="w-full bg-mja-dark hover:bg-mja-navy text-white font-semibold px-4 py-2.5 rounded-xl transition-colors text-sm flex items-center justify-center gap-2">

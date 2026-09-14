@@ -14,6 +14,7 @@ class Adhesion extends Model
         'profession', 'telephone', 'email', 'reseaux_sociaux', 'adresse_postale',
         'taille_tshirt', 'permis', 'problemes_sante', 'urgence_contact', 'message', 'photo',
         'moyen_paiement', 'droit_image', 'rgpd_consentement', 'statut', 'lu',
+        'commentaire',
         'source_id', 'period_id', 'account_token', 'account_token_expires_at',
         'renouvellement_token', 'renouvellement_token_expires_at', 'renouvelle_adhesion_id', 'promo_code_id',
     ];
