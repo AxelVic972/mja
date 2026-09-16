@@ -80,6 +80,20 @@
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}"
           onerror="this.onerror=null;var l=document.createElement('link');l.rel='stylesheet';l.href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css';document.head.appendChild(l)">
 
+    {{-- ── Meta Pixel ──────────────────────────────────────────── --}}
+    <script>
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window, document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '1060600316583859');
+    fbq('track', 'PageView');
+    </script>
+
     <style>
         html, body { margin: 0; padding: 0; }
         body { font-family: 'Gill Sans', 'Open Sans', sans-serif; color: #333333; }
@@ -215,6 +229,10 @@
     @stack('head')
 </head>
 <body class="bg-white">
+
+    <noscript><img height="1" width="1" style="display:none"
+        src="https://www.facebook.com/tr?id=1060600316583859&ev=PageView&noscript=1"
+        alt=""></noscript>
 
     <a href="#contenu" class="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-2 focus:left-2 focus:bg-white focus:text-mja-dark focus:px-4 focus:py-2 focus:rounded-lg focus:shadow-lg focus:font-display focus:font-bold">Aller au contenu principal</a>
 
