@@ -126,7 +126,7 @@
                     <div class="font-semibold {{ !$adhesion->lu ? 'text-gray-900' : 'text-gray-600' }}">
                         {{ $adhesion->civilite }} {{ $adhesion->prenom }} {{ $adhesion->nom }}
                     </div>
-                    <div class="text-xs text-gray-400">{{ $adhesion->email }}</div>
+                    <div class="text-xs text-gray-400">{{ $adhesion->telephone }}</div>
                 </td>
                 <td class="px-4 py-4">
                     @php $typeColors = ['premiere' => 'bg-blue-100 text-blue-700', 'readhesion' => 'bg-purple-100 text-purple-700', 'information' => 'bg-gray-100 text-gray-600']; @endphp
