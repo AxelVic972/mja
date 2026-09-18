@@ -27,6 +27,11 @@ class AdhesionController extends Controller
             'total'                => (clone $statistiques)->count(),
             'en_attente_paiement' => (clone $statistiques)->where('statut', 'en_attente_paiement')->count(),
             'adherents'            => (clone $statistiques)->where('statut', 'payee')->count(),
+            'demandes_adhesion'   => (clone $statistiques)->where('premiere_adhesion', 'premiere')->count(),
+            'adhesions_payees'    => (clone $statistiques)->where('premiere_adhesion', 'premiere')->where('statut', 'payee')->count(),
+            'readhesions'         => (clone $statistiques)->where('premiere_adhesion', 'readhesion')->count(),
+            'readhesions_payees'  => (clone $statistiques)->where('premiere_adhesion', 'readhesion')->where('statut', 'payee')->count(),
+            'prises_infos'        => (clone $statistiques)->where('statut', 'prise_infos')->count(),
         ];
 
         // Adhésions rattachées à aucune saison : elles échappent aux filtres,
@@ -247,31 +252,83 @@ class AdhesionController extends Controller
         return redirect()->route('admin.adhesions.index')->with('success', 'Demande supprimée.');
     }
 
-    /** Applique le filtre de saison choisi dans la liste et dans l'export. */
+    /** Applique les filtres de la liste dans la liste et dans l'export. */
     private function adhesionsPourPeriode(Request $request, ?AdhesionPeriod &$periodeSelectionnee)
     {
         $query = Adhesion::with('period')->orderByDesc('created_at');
         $filtre = $request->input('period');
+        $filtre = is_string($filtre) ? $filtre : null;
 
         if ($filtre === 'aucune') {
-            return $query->whereNull('period_id');
+            $query->whereNull('period_id');
+        } elseif ($filtre !== null && $filtre !== '' && $filtre !== 'toutes') {
+            $query->where('period_id', (int) $filtre);
+        } elseif ($filtre === null || $filtre === '') {
+            // La liste ne mélange pas les campagnes : elle ouvre d'abord la
+            // saison à laquelle les nouvelles adhésions sont aujourd'hui rattachées.
+            $periodeSelectionnee = AdhesionPeriod::pourAdhesion();
+
+            if ($periodeSelectionnee) {
+                $query->where('period_id', $periodeSelectionnee->id);
+            }
         }
 
-        if ($filtre === 'toutes') {
-            return $query;
+        $this->appliquerFiltresColonnes($query, $request);
+
+        return $query;
+    }
+
+    /** Ajoute les filtres visibles sous les en-têtes du tableau. */
+    private function appliquerFiltresColonnes($query, Request $request): void
+    {
+        $candidat = $request->input('candidat', '');
+        $candidat = is_string($candidat) ? trim($candidat) : '';
+        if ($candidat !== '') {
+            $query->where(function ($sousRequete) use ($candidat) {
+                $recherche = '%' . $candidat . '%';
+                $sousRequete->where('nom', 'like', $recherche)
+                    ->orWhere('prenom', 'like', $recherche)
+                    ->orWhere('telephone', 'like', $recherche)
+                    ->orWhere('email', 'like', $recherche);
+            });
         }
 
-        if ($request->filled('period')) {
-            return $query->where('period_id', $request->integer('period'));
+        $type = $request->input('type');
+        if (is_string($type) && array_key_exists($type, [
+            'premiere' => true,
+            'readhesion' => true,
+            'information' => true,
+        ])) {
+            $query->where('premiere_adhesion', $type);
         }
 
-        // La liste ne mélange pas les campagnes : elle ouvre d'abord la
-        // saison à laquelle les nouvelles adhésions sont aujourd'hui rattachées.
-        $periodeSelectionnee = AdhesionPeriod::pourAdhesion();
+        $statut = $request->input('statut');
+        if (is_string($statut) && array_key_exists($statut, Adhesion::STATUTS)) {
+            $query->where('statut', $statut);
+        }
 
-        return $periodeSelectionnee
-            ? $query->where('period_id', $periodeSelectionnee->id)
-            : $query;
+        $paiement = $request->input('paiement');
+        if (is_string($paiement) && array_key_exists($paiement, [
+            'cheque' => true,
+            'espece' => true,
+            'virement' => true,
+            'en_ligne' => true,
+            'code_promo' => true,
+        ])) {
+            $query->where('moyen_paiement', $paiement);
+        }
+
+        $commentaire = $request->input('commentaire', '');
+        $commentaire = is_string($commentaire) ? trim($commentaire) : '';
+        if ($commentaire !== '') {
+            $query->where('commentaire', 'like', '%' . $commentaire . '%');
+        }
+
+        $date = $request->input('date', '');
+        $date = is_string($date) ? $date : '';
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) === 1) {
+            $query->whereDate('created_at', $date);
+        }
     }
 
     /** Validation des données saisies depuis le back-office. */

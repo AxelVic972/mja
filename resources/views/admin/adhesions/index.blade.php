@@ -3,7 +3,7 @@
 @section('page-title', 'Demandes d\'adhésion')
 @section('content')
 
-<div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 mb-6">
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 mt-4 mb-6">
     <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm flex items-center gap-4">
         <div class="w-12 h-12 bg-mja-blue/10 rounded-xl flex items-center justify-center shrink-0">
             <i class="fas fa-users text-mja-blue"></i>
@@ -11,6 +11,35 @@
         <div>
             <div class="text-2xl font-display font-black text-mja-gray">{{ $stats['total'] }}</div>
             <div class="text-xs text-gray-400 font-semibold uppercase tracking-wider">Total</div>
+        </div>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm flex items-center gap-4">
+        <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center shrink-0">
+            <i class="fas fa-user-plus text-blue-500"></i>
+        </div>
+        <div>
+            <div class="text-2xl font-display font-black text-mja-gray">{{ $stats['demandes_adhesion'] }}</div>
+            <div class="text-xs text-gray-400 font-semibold uppercase tracking-wider">Demandes d'adhésion</div>
+            <div class="text-xs text-green-600 font-semibold mt-1">dont {{ $stats['adhesions_payees'] }} payée{{ $stats['adhesions_payees'] > 1 ? 's' : '' }}</div>
+        </div>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm flex items-center gap-4">
+        <div class="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center shrink-0">
+            <i class="fas fa-rotate text-purple-500"></i>
+        </div>
+        <div>
+            <div class="text-2xl font-display font-black text-mja-gray">{{ $stats['readhesions'] }}</div>
+            <div class="text-xs text-gray-400 font-semibold uppercase tracking-wider">Demandes de réadhésion</div>
+            <div class="text-xs text-green-600 font-semibold mt-1">dont {{ $stats['readhesions_payees'] }} payée{{ $stats['readhesions_payees'] > 1 ? 's' : '' }}</div>
+        </div>
+    </div>
+    <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm flex items-center gap-4">
+        <div class="w-12 h-12 bg-sky-50 rounded-xl flex items-center justify-center shrink-0">
+            <i class="fas fa-circle-question text-sky-500"></i>
+        </div>
+        <div>
+            <div class="text-2xl font-display font-black text-mja-gray">{{ $stats['prises_infos'] }}</div>
+            <div class="text-xs text-gray-400 font-semibold uppercase tracking-wider">Prises d'information à traiter</div>
         </div>
     </div>
     <div class="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm flex items-center gap-4">
@@ -69,32 +98,30 @@
 @endif
 
 <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-    @if($periods->count())
-    <form method="GET" class="flex items-center gap-2">
-        <label class="text-sm text-gray-500 font-display font-semibold">Période :</label>
-        <select name="period" onchange="this.form.submit()" class="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-mja-blue">
-            @if($periodeSelectionnee)
-            <option value="" @selected(!request()->has('period'))>{{ $periodeSelectionnee->label }} (par défaut)</option>
-            @endif
-            <option value="toutes" @selected(request('period') === 'toutes')>Toutes les saisons</option>
-            @foreach($periods as $p)
-            <option value="{{ $p->id }}" @selected(request()->has('period') && request('period') !== 'aucune' && request('period') == $p->id)>{{ $p->label }}</option>
-            @endforeach
-            @if($sansPeriode > 0)
-            <option value="aucune" @selected(request('period') === 'aucune')>Sans saison ({{ $sansPeriode }})</option>
-            @endif
-        </select>
-        @if(request()->has('period'))<a href="{{ route('admin.adhesions.index') }}" class="text-xs text-mja-blue hover:underline">Revenir à la saison par défaut</a>@endif
+    @php
+        $filtresActifs = (request()->has('period') && request('period') !== '')
+            || request()->filled('candidat')
+            || request()->filled('type')
+            || request()->filled('statut')
+            || request()->filled('paiement')
+            || request()->filled('commentaire')
+            || request()->filled('date');
+    @endphp
+    <form id="admin-adhesion-filters" method="GET" action="{{ route('admin.adhesions.index') }}" class="flex flex-wrap items-center gap-2">
+        <span class="text-sm text-gray-500 font-display font-semibold">Filtres du tableau</span>
+        <button type="submit" class="inline-flex items-center gap-2 bg-mja-blue hover:bg-mja-bluedark text-white font-display font-bold text-sm px-4 py-2 rounded-xl transition-colors">
+            <i class="fas fa-filter"></i> Filtrer
+        </button>
+        @if($filtresActifs)
+        <a href="{{ route('admin.adhesions.index') }}" class="text-xs text-mja-blue hover:underline">Réinitialiser</a>
+        @endif
     </form>
-    @else
-    <span></span>
-    @endif
     <div class="flex items-center gap-2">
         <a href="{{ route('admin.adhesions.create') }}"
            class="inline-flex items-center gap-2 bg-mja-blue hover:bg-mja-bluedark text-white font-display font-bold text-sm px-4 py-2 rounded-xl transition-colors">
             <i class="fas fa-plus"></i> Ajouter une adhésion
         </a>
-        <a href="{{ route('admin.adhesions.export', array_filter(['period' => request('period')])) }}"
+        <a href="{{ route('admin.adhesions.export', request()->only(['period', 'candidat', 'type', 'statut', 'paiement', 'commentaire', 'date'])) }}"
            class="inline-flex items-center gap-2 bg-mja-dark hover:bg-mja-navy text-white font-display font-bold text-sm px-4 py-2 rounded-xl transition-colors">
             <i class="fas fa-file-csv"></i> Exporter en CSV
         </a>
@@ -114,6 +141,66 @@
                 <th class="px-4 py-3 text-left font-semibold">Période</th>
                 <th class="px-4 py-3 text-left font-semibold">Date</th>
                 <th class="px-4 py-3 text-center font-semibold">Actions</th>
+            </tr>
+            <tr class="border-t border-gray-100 bg-white normal-case">
+                <th class="px-6 py-2"></th>
+                <th class="px-4 py-2">
+                    <label class="sr-only" for="filter-candidat">Filtrer le candidat</label>
+                    <input id="filter-candidat" form="admin-adhesion-filters" type="search" name="candidat" value="{{ request('candidat') }}" placeholder="Nom, téléphone…" class="w-full min-w-40 border border-gray-200 rounded-lg px-2.5 py-2 text-xs font-normal focus:outline-none focus:ring-2 focus:ring-mja-blue">
+                </th>
+                <th class="px-4 py-2">
+                    <label class="sr-only" for="filter-type">Filtrer le type</label>
+                    <select id="filter-type" form="admin-adhesion-filters" name="type" class="w-full border border-gray-200 rounded-lg px-2.5 py-2 text-xs font-normal focus:outline-none focus:ring-2 focus:ring-mja-blue">
+                        <option value="">Tous les types</option>
+                        <option value="premiere" @selected(request('type') === 'premiere')>Première adhésion</option>
+                        <option value="readhesion" @selected(request('type') === 'readhesion')>Réadhésion</option>
+                        <option value="information" @selected(request('type') === 'information')>Prise d'informations</option>
+                    </select>
+                </th>
+                <th class="px-4 py-2">
+                    <label class="sr-only" for="filter-statut">Filtrer le statut</label>
+                    <select id="filter-statut" form="admin-adhesion-filters" name="statut" class="w-full border border-gray-200 rounded-lg px-2.5 py-2 text-xs font-normal focus:outline-none focus:ring-2 focus:ring-mja-blue">
+                        <option value="">Tous les statuts</option>
+                        @foreach(\App\Models\Adhesion::STATUTS as $valeur => $libelle)
+                        <option value="{{ $valeur }}" @selected(request('statut') === $valeur)>{{ $libelle }}</option>
+                        @endforeach
+                    </select>
+                </th>
+                <th class="px-4 py-2">
+                    <label class="sr-only" for="filter-paiement">Filtrer le paiement</label>
+                    <select id="filter-paiement" form="admin-adhesion-filters" name="paiement" class="w-full border border-gray-200 rounded-lg px-2.5 py-2 text-xs font-normal focus:outline-none focus:ring-2 focus:ring-mja-blue">
+                        <option value="">Tous les paiements</option>
+                        <option value="cheque" @selected(request('paiement') === 'cheque')>Chèque</option>
+                        <option value="espece" @selected(request('paiement') === 'espece')>Espèces</option>
+                        <option value="virement" @selected(request('paiement') === 'virement')>Virement bancaire</option>
+                        <option value="en_ligne" @selected(request('paiement') === 'en_ligne')>Paiement en ligne</option>
+                        <option value="code_promo" @selected(request('paiement') === 'code_promo')>Code promotionnel</option>
+                    </select>
+                </th>
+                <th class="px-4 py-2">
+                    <label class="sr-only" for="filter-commentaire">Filtrer le commentaire</label>
+                    <input id="filter-commentaire" form="admin-adhesion-filters" type="search" name="commentaire" value="{{ request('commentaire') }}" placeholder="Rechercher…" class="w-full min-w-40 border border-gray-200 rounded-lg px-2.5 py-2 text-xs font-normal focus:outline-none focus:ring-2 focus:ring-mja-blue">
+                </th>
+                <th class="px-4 py-2">
+                    <label class="sr-only" for="filter-period">Filtrer la période</label>
+                    <select id="filter-period" form="admin-adhesion-filters" name="period" onchange="this.form.requestSubmit()" class="w-full border border-gray-200 rounded-lg px-2.5 py-2 text-xs font-normal focus:outline-none focus:ring-2 focus:ring-mja-blue">
+                        @if($periodeSelectionnee)
+                        <option value="" @selected(!request()->has('period'))>{{ $periodeSelectionnee->label }} (par défaut)</option>
+                        @endif
+                        <option value="toutes" @selected(request('period') === 'toutes')>Toutes les saisons</option>
+                        @foreach($periods as $p)
+                        <option value="{{ $p->id }}" @selected(request()->has('period') && request('period') !== 'aucune' && request('period') == $p->id)>{{ $p->label }}</option>
+                        @endforeach
+                        @if($sansPeriode > 0)
+                        <option value="aucune" @selected(request('period') === 'aucune')>Sans saison ({{ $sansPeriode }})</option>
+                        @endif
+                    </select>
+                </th>
+                <th class="px-4 py-2">
+                    <label class="sr-only" for="filter-date">Filtrer la date</label>
+                    <input id="filter-date" form="admin-adhesion-filters" type="date" name="date" value="{{ request('date') }}" class="w-full border border-gray-200 rounded-lg px-2.5 py-2 text-xs font-normal focus:outline-none focus:ring-2 focus:ring-mja-blue">
+                </th>
+                <th class="px-4 py-2"></th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-50">
